@@ -1,0 +1,54 @@
+%% main.tex — Ziqing Guo, Ph.D. dissertation, Texas Tech University
+%% Build: latexmk -pdf main.tex   (see ../Makefile)
+\documentclass[dissertation,doublespacing,leftmargin15]{ttuthesis}
+
+\input{preamble}
+
+% ---------------- Metadata ----------------
+\title{Scaling Quantum Computing Across the Stack: GPU-Accelerated Circuit Simulation, Hardware-Aware Algorithms, Quantum Learning, and Verifiable Error Correction for the Post-Quantum Era}
+\author{Ziqing Guo}
+\credentials{B.S., M.S.}            % TODO: confirm previously earned degrees exactly as on the transcript
+\department{Computer Science}
+\degree{Doctor of Philosophy}
+\graduationmonth{May}               % TODO: graduation month
+\graduationyear{2027}               % TODO: graduation year
+\committeechair{Ziwen Pan, Ph.D.}
+\committeemember{Committee Member, Ph.D.}     % TODO
+\committeemember{Committee Member, Ph.D.}     % TODO
+\committeemember{Committee Member, Ph.D.}     % TODO
+\graduatedean{Mark Sheridan, Ph.D.}          % TODO: confirm current Dean of the Graduate School
+
+\addbibresource{../bib/refs.bib}
+
+\begin{document}
+
+% ---------------- Front matter ----------------
+\maketitlepage
+\makecopyrightpage
+\input{frontmatter/acknowledgments}
+\ttutableofcontents
+\input{frontmatter/abstract}
+\ttulistoftables
+\ttulistoffigures
+\input{frontmatter/abbreviations}
+
+% ---------------- Main matter ----------------
+\ttumainmatter
+\input{chapters/ch01-introduction}
+\input{chapters/ch02-background}
+\input{chapters/ch03-qgear}
+\input{chapters/ch04-nisq-optimization}
+\input{chapters/ch05-quantum-learning}
+\input{chapters/ch06-ai-synthesis}
+\input{chapters/ch07-qec-security}
+\input{chapters/ch08-pqc}
+\input{chapters/ch09-conclusion}
+
+% ---------------- Back matter ----------------
+\ttureferences
+\ttuappendices
+\input{appendices/appA-qgear-artifacts}
+\input{appendices/appB-reproducibility}
+\input{appendices/appC-ai-use}
+
+\end{document}

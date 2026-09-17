@@ -1,0 +1,116 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{guo2025qgear}{inproceedings}{}
+      \name{author}{3}{}{%
+        {{hash=ce98033b98c273f84d6fb9950d85b219}{%
+           family={Guo},
+           familyi={G\bibinitperiod},
+           given={Ziqing},
+           giveni={Z\bibinitperiod}}}%
+        {{hash=4c514c19e49faab113f4820f25b12844}{%
+           family={Balewski},
+           familyi={B\bibinitperiod},
+           given={Jan},
+           giveni={J\bibinitperiod}}}%
+        {{hash=7b0e1e10e9f3d4c3f53d895a574d91cf}{%
+           family={Pan},
+           familyi={P\bibinitperiod},
+           given={Ziwen},
+           giveni={Z\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {San Diego, CA, USA}%
+      }
+      \list{publisher}{1}{%
+        {ACM}%
+      }
+      \strng{namehash}{de1ea08f35f346efb2897fc18d1c7f7e}
+      \strng{fullhash}{de1ea08f35f346efb2897fc18d1c7f7e}
+      \strng{bibnamehash}{de1ea08f35f346efb2897fc18d1c7f7e}
+      \strng{authorbibnamehash}{de1ea08f35f346efb2897fc18d1c7f7e}
+      \strng{authornamehash}{de1ea08f35f346efb2897fc18d1c7f7e}
+      \strng{authorfullhash}{de1ea08f35f346efb2897fc18d1c7f7e}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 54th International Conference on Parallel Processing (ICPP '25)}
+      \field{eprintclass}{quant-ph}
+      \field{eprinttype}{arXiv}
+      \field{note}{Also appears in ICPP Workshops '25 Proceedings, pp. 200--209, DOI 10.1145/3750720.3757302. arXiv:2504.03967}
+      \field{title}{{Q-GEAR}: Improving Quantum Simulation Framework}
+      \field{year}{2025}
+      \field{pages}{638\bibrangedash 647}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1145/3754598.3754608
+      \endverb
+      \verb{eprint}
+      \verb 2504.03967
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2504.03967
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2504.03967
+      \endverb
+    \endentry
+    \entry{farhi2014qaoa}{misc}{}
+      \name{author}{3}{}{%
+        {{hash=5e61ee12360fc49d9013fbf8fe18db89}{%
+           family={Farhi},
+           familyi={F\bibinitperiod},
+           given={Edward},
+           giveni={E\bibinitperiod}}}%
+        {{hash=f2e6b451475e084ec5469a7bd9c9c6cf}{%
+           family={Goldstone},
+           familyi={G\bibinitperiod},
+           given={Jeffrey},
+           giveni={J\bibinitperiod}}}%
+        {{hash=39d938c535d4f5974b7e118bfc075b2f}{%
+           family={Gutmann},
+           familyi={G\bibinitperiod},
+           given={Sam},
+           giveni={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{20254ebc49b7f7e3467958f0e39320cd}
+      \strng{fullhash}{20254ebc49b7f7e3467958f0e39320cd}
+      \strng{bibnamehash}{20254ebc49b7f7e3467958f0e39320cd}
+      \strng{authorbibnamehash}{20254ebc49b7f7e3467958f0e39320cd}
+      \strng{authornamehash}{20254ebc49b7f7e3467958f0e39320cd}
+      \strng{authorfullhash}{20254ebc49b7f7e3467958f0e39320cd}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{quant-ph}
+      \field{eprinttype}{arXiv}
+      \field{title}{A Quantum Approximate Optimization Algorithm}
+      \field{year}{2014}
+      \verb{eprint}
+      \verb 1411.4028
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
