@@ -1,1 +1,395 @@
-% stub
+%% ch07-qec-security.tex — Chapter VII: Auditing Error Correction on Shared Cloud Hardware
+%% Source: guo2026qecaudit (arXiv:2608.26600); artifact anonymous.4open.science usenix_qec_hse
+%% Label prefix: qec:
+\chapter{Auditing Error Correction on Shared Cloud Hardware}\label{ch:qec}
+
+\authorshipstatement{This chapter is based on Z.~Guo, A.~Lawrence, R.~Wang, R.~Kuang and Z.~Pan, ``Auditing Structured Randomness for Quantum Error Correction under a Bounded Cloud Fault Model,'' arXiv:2608.26600 (2026)~\cite{guo2026qecaudit}, whose containerized, seeded and deterministic artifact is hosted on anonymous.4open.science under the name \texttt{usenix\_qec\_hse}. The candidate formulated the threat model and the accepted-logical-disturbance measure, derived the Haar-random expectation, designed the Hadamard-structured ensemble and the audit protocol, implemented the enumeration and Stim simulations, and wrote the manuscript. A.~Lawrence and R.~Wang (Lightrider) contributed the cryptographic-module and standards perspective; R.~Kuang (Quantropi) advised on randomness requirements and the threat model; Z.~Pan supervised the work.}
+
+This chapter addresses the first half of RQ5: how do we make error-corrected computation on shared cloud quantum processors auditable and secure? The thesis of the dissertation is that a co-designed classical stack surrounds the QPU at every layer; this chapter argues that one of those layers must be a \emph{security} layer, and that the error-correcting encoder is where it attaches. A fixed, publicly known encoder circuit is a reusable target for a co-located adversary who can inject a single Pauli fault; drawing the encoder afresh from a seeded ensemble at every run changes the map from physical faults to logical effects and turns the syndrome check into a defense. We make this argument quantitative with a measure we call \emph{accepted logical disturbance} (\cref{sec:qec:disturbance}), derive its expectation over Haar-random encoders (\cref{sec:qec:haar}), replace the exponentially costly Haar ensemble by a polynomial-cost seeded Clifford ensemble (\cref{sec:qec:hse}), specify an audit protocol (\cref{sec:qec:protocol}), and evaluate it on the \code{5}{1}{3} code and in gate-level simulations at $n=17$ (\cref{sec:qec:experiments}). The chapter closes with limitations (\cref{sec:qec:discussion}), the connections to \cref{ch:synthesis,ch:pqc} (\cref{sec:qec:relation}) and a summary (\cref{sec:qec:summary}).
+
+\section{Introduction}\label{sec:qec:intro}
+
+Quantum processors are consumed as a cloud service. A user submits a circuit, a scheduler places it on a device that other users' circuits are also occupying or have just occupied, and the result is returned with no attestation of what else ran on the same chip. Multi-programming of a single QPU has been proposed as a throughput measure~\cite{das2019multiprogramming}, and the security consequences of co-tenancy---crosstalk that one job can direct at another~\cite{ashsaki2020crosstalk}, and the need for defenses that scan for malicious circuit patterns~\cite{deshpande2022antivirus}---have been studied for NISQ workloads. Error-corrected workloads change the picture in two ways. First, the encoder that maps a logical state into a code is a long, structured circuit that is executed identically at every run; if it is public, an adversary can precompute which physical fault produces which logical effect. Second, error correction includes a mechanism---syndrome extraction followed by correction or rejection---that is designed to catch exactly the kind of low-weight disturbance a fault injector can produce, so the defense is already in the protocol and the question becomes how to prevent the adversary from routing around it.
+
+Fault-injection attacks are classical territory. Boneh, DeMillo and Lipton showed that a single induced fault can break RSA signatures~\cite{boneh1997faults}, and cryptographic-module standards have since required fault-detection and randomized countermeasures~\cite{nist2019fips1403}. The analogue we propose for QEC is \emph{reseeding}: the encoder is drawn from a seeded ensemble at each run, so that a fault the adversary has tuned to one encoder maps to a detectable syndrome under the next. The idea resembles randomized compiling~\cite{wallman2016randomizedcompiling}, which twirls gates to tailor coherent noise into stochastic noise, but it differs in intent and in analysis: our adversary is not noise but a strategist, and our figure of merit is not the average gate fidelity but the logical damage that survives the syndrome check.
+
+Three questions must be answered for reseeding to be more than a slogan. What exactly is the quantity that the adversary wants to maximize and the defender wants to bound? What does the ideal defense---a Haar-random encoder---achieve, and can a circuit of polynomial size achieve nearly the same? And how does an operator \emph{audit} that the randomness is really there, in the vocabulary of the standards that govern randomness in cryptographic modules~\cite{nist2015sp80090a,nist2019fips1403}? The contributions of this chapter answer them in turn.
+\begin{enumerate}
+  \item A bounded cloud fault model (\cref{sec:qec:threat}) and the accepted logical disturbance (\cref{sec:qec:disturbance}), an acceptance-weighted measure of harmful logical action that survives syndrome-based rejection, with an exact expression for its expectation over Haar-random encoders that depends only on second moments and therefore holds for any unitary 2-design (\cref{sec:qec:haar}).
+  \item The Hadamard-structured ensemble (HSE), a seeded family of Clifford encoders built from Hadamard, phase, permutation and CNOT layers of depth $d$, with polynomial-cost derivation of stabilizers and logicals (\cref{sec:qec:hse}).
+  \item An audit protocol (\cref{sec:qec:protocol}) and its evaluation: on the \code{5}{1}{3} code with all $3n=15$ weight-one Pauli faults, reseeding reduces the mean accepted logical disturbance from $0.150$ to $0.020$, an $86.7\%$ reduction attributable to rejection, while $18.5\%$ of sampled HSE encoders satisfy the exact error-correction conditions; gate-level Stim simulations at $n=17$ confirm the scaling (\cref{sec:qec:experiments}).
+\end{enumerate}
+
+\section{Preliminaries}\label{sec:qec:prelim}
+
+\subsection{Stabilizer Codes and the Five-Qubit Code}\label{sec:qec:stabilizer}
+
+The stabilizer formalism is reviewed in \cref{sec:bg:qec}; we fix notation. An $\code{n}{k}{\delta}$ stabilizer code is defined by an abelian subgroup $\mathcal{S}$ of the $n$-qubit Pauli group, not containing $-I$, with $n-k$ independent generators $g_1,\dots,g_{n-k}$; the code space is
+\begin{equation}\label{eq:qec:codespace}
+  \mathcal{C}=\{\ket{\phi}:\ g\ket{\phi}=\ket{\phi}\ \ \forall g\in\mathcal{S}\},\qquad \dim\mathcal{C}=2^{k}.
+\end{equation}
+A Pauli $P$ has syndrome $\sigma(P)\in\{0,1\}^{n-k}$ with $\sigma_j(P)=0$ if $P$ commutes with $g_j$ and $1$ otherwise. Paulis with trivial syndrome form the normalizer $N(\mathcal{S})$; those in $N(\mathcal{S})\setminus\mathcal{S}$ act as non-trivial logical operators, and the distance $\delta$ is the minimum weight of such an operator. The Knill--Laflamme conditions~\cite{knill1997theory} state that a set of errors $\mathcal{F}$ is correctable if and only if
+\begin{equation}\label{eq:qec:kl}
+  \Pi\,P_a^{\dagger}P_b\,\Pi \;=\; c_{ab}\,\Pi\qquad\forall\,P_a,P_b\in\mathcal{F}\cup\{I\},
+\end{equation}
+with $\Pi$ the projector onto $\mathcal{C}$ and $c_{ab}$ scalars. For a stabilizer code and Pauli errors, \cref{eq:qec:kl} holds when every product $P_a^{\dagger}P_b$ either lies in $\mathcal{S}$ or anticommutes with some generator, and the weaker condition that every $P\in\mathcal{F}$ be \emph{detectable} requires only that $P\notin N(\mathcal{S})\setminus\mathcal{S}$.
+
+The \code{5}{1}{3} code~\cite{laflamme1996perfect,bennett1996mixed} is the smallest code that corrects an arbitrary single-qubit error. Its four generators are the cyclic shifts of $XZZXI$, and its logical operators can be taken as $\bar X=X^{\otimes 5}$ and $\bar Z=Z^{\otimes 5}$~\cite{nielsen2010qcqi}; \cref{tab:qec:code513} lists them. The code is \emph{perfect}: its $2^{4}-1=15$ non-zero syndromes are in one-to-one correspondence with the $3n=15$ weight-one Pauli faults, so every such fault is detected and uniquely identified. This is exactly the property that makes the code the right test bed for the audit---an adversary restricted to weight-one faults cannot defeat the ideal \code{5}{1}{3} encoder, so any disturbance that survives must be attributed to the \emph{encoder ensemble}, not to the code.
+
+\begin{table}[htbp]
+\caption{Stabilizer generators and logical operators of the \code{5}{1}{3} code (textbook form, after \cite{laflamme1996perfect,nielsen2010qcqi}). Each of the $15$ weight-one Pauli faults has a distinct non-zero syndrome.}
+\label{tab:qec:code513}
+\centering\small
+\begin{tabular}{@{}lccccc l@{}}
+\toprule
+Operator & $q_1$ & $q_2$ & $q_3$ & $q_4$ & $q_5$ & Role \\
+\midrule
+$g_1$ & $X$ & $Z$ & $Z$ & $X$ & $I$ & stabilizer generator \\
+$g_2$ & $I$ & $X$ & $Z$ & $Z$ & $X$ & stabilizer generator \\
+$g_3$ & $X$ & $I$ & $X$ & $Z$ & $Z$ & stabilizer generator \\
+$g_4$ & $Z$ & $X$ & $I$ & $X$ & $Z$ & stabilizer generator \\
+\midrule
+$\bar X$ & $X$ & $X$ & $X$ & $X$ & $X$ & logical $X$ (weight 5; weight-3 representatives exist) \\
+$\bar Z$ & $Z$ & $Z$ & $Z$ & $Z$ & $Z$ & logical $Z$ (weight 5; weight-3 representatives exist) \\
+\midrule
+\multicolumn{7}{@{}l}{Weight-one faults: $\{X_i,Y_i,Z_i\}_{i=1}^{5}$, $15$ in total; syndromes $\sigma\in\{0,1\}^{4}\setminus\{0000\}$, $15$ in total.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Encoders, Syndromes and Rejection}\label{sec:qec:encoders}
+
+An \emph{encoder} for a $k=1$ code is a unitary $E$ on $n$ qubits that maps the logical qubit $A$ together with $n-1$ ancillas $B$ prepared in $\ket{0}$ into the code space,
+\begin{equation}\label{eq:qec:encoder}
+  E\big(\ket{\psi}_A\otimes\ket{0^{\,n-1}}_B\big)\in\mathcal{C},\qquad
+  \mathcal{S}=\big\{E\,Z_j\,E^{\dagger}:\ j=2,\dots,n\big\},\qquad
+  \bar X=E X_1 E^{\dagger},\ \ \bar Z=E Z_1 E^{\dagger}.
+\end{equation}
+When $E$ is Clifford the stabilizers and logicals in \cref{eq:qec:encoder} are Paulis and can be computed by tableau simulation~\cite{aaronson2004stabilizer} in time polynomial in $n$ and in the gate count of $E$. The projector onto the code space is $\Pi_E=E\,\Pi_0\,E^{\dagger}$ with $\Pi_0=I_A\otimes\ket{0^{\,n-1}}\!\bra{0^{\,n-1}}_B$, and the syndrome measurement is, up to the choice of generators, the measurement of $\{Z_j\}_{j\ge 2}$ in the decoded frame. We consider \emph{syndrome-based rejection}: a run whose syndrome is non-trivial is discarded. Rejection is the right primitive for an audit because it makes the accepted output depend on the fault only through the projector $\Pi_E$, and because an operator who rejects rather than corrects cannot be misled by a decoder that the adversary has also studied. Correction is the operational goal, and \cref{sec:qec:discussion} discusses how the audit extends to it.
+
+\subsection{Random Unitaries, Designs and the Clifford Group}\label{sec:qec:designs}
+
+A Haar-random encoder is the natural idealization of ``the adversary knows nothing about the code.'' Haar-random unitaries on $n$ qubits cannot be implemented with polynomially many gates, but many of their statistical properties are reproduced by unitary $t$-designs, ensembles whose first $t$ moments agree with Haar's~\cite{dankert2009designs,gross2007designs}. The uniform distribution over the $n$-qubit Clifford group is a unitary 2-design and indeed a 3-design~\cite{webb2016clifford3design}, and a uniformly random Clifford element can be sampled and compiled in polynomial time~\cite{koenig2014clifford,bravyi2021hadamardfree}. The consequence we exploit in \cref{sec:qec:haar} is that any quantity that is quadratic in the encoder and its adjoint has the same expectation under Haar and under any 2-design; the accepted logical disturbance is such a quantity.
+
+\section{The Bounded Cloud Fault Model}\label{sec:qec:threat}
+
+\Cref{fig:qec:threat} depicts the setting. A client prepares a logical state, chooses (or is assigned) an encoder, and submits the encoded computation to a shared QPU; a co-tenant adversary occupies neighbouring qubits during a \emph{fault window} between encoding and syndrome extraction; the syndrome is measured and the run is accepted or rejected. The adversary's capabilities and knowledge are bounded as follows.
+
+\begin{assumption}[Bounded cloud fault model]\label{ass:qec:model}
+\begin{enumerate}
+  \item \emph{Fault capability.} During the fault window of one run the adversary can apply at most one weight-one Pauli $P\in\mathcal{F}=\{X_i,Y_i,Z_i\}_{i=1}^{n}$ to the encoded register, for instance through directed crosstalk or a mistimed control pulse~\cite{ashsaki2020crosstalk}. Native device noise is either absent (exact enumeration) or modelled as depolarizing noise on every gate (gate-level simulation).
+  \item \emph{Knowledge.} The adversary knows the code family, the encoder ensemble and the audit protocol. In the \emph{adaptive} setting the adversary also learns the encoder $E$ of the current run before choosing $P$; this models a fixed, public encoder, since a fixed encoder is learned once and known thereafter. In the \emph{committed} setting the adversary must choose $P$ before the seed of the current run is drawn.
+  \item \emph{Trusted components.} Seed generation, encoder derivation from the seed, syndrome extraction and the accept/reject decision are trusted and, in the enumeration experiments, ideal.
+  \item \emph{Goal.} The adversary seeks to maximize the harmful logical action that survives rejection; the defender seeks to bound it.
+\end{enumerate}
+\end{assumption}
+
+The model is deliberately bounded. A single weight-one fault is the smallest disturbance that a code is designed to handle, so it isolates the question of whether the \emph{encoder}, rather than the code, is the weak point. The adaptive-versus-committed distinction is the formal content of ``reseeding'': the two settings use the same ensemble, the same faults and the same rejection rule, and differ only in whether the adversary chooses after or before the seed.
+
+% alt: Threat-model diagram. On the left a client generates a seed from a validated random-bit generator and derives a seeded HSE encoder. Inside a dashed box labelled shared cloud QPU, the encoder is applied, a fault window follows in which a co-tenant adversary injects a weight-one Pauli fault, then syndrome extraction leads to an accept-or-reject decision; accepted runs produce the logical output, rejected runs are discarded. A note contrasts a fixed public encoder, which the adversary learns once, with per-run reseeding.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  box/.style={draw,rounded corners=2pt,align=center,minimum height=10mm,text width=27mm,inner sep=3pt,fill=white},
+  trusted/.style={box,fill=cbSky!20,draw=cbBlue},
+  adv/.style={box,fill=cbRed!15,draw=cbRed},
+  dec/.style={draw,diamond,aspect=2.2,align=center,inner sep=1pt,fill=white,font=\footnotesize},
+  arr/.style={-{Latex[length=2.2mm]},thick}]
+  \node[trusted] (seed) {Seed $s$\\validated DRBG};
+  \node[trusted,right=6mm of seed] (enc) {HSE encoder\\$E_s=\textsc{HSE}(s,d)$};
+  \node[box,right=8mm of enc] (encode) {Encode\\$E_s(\ket{\psi}\ket{0^{n-1}})$};
+  \node[box,right=6mm of encode] (window) {Fault window\\$P\in\mathcal{F}$};
+  \node[adv,above=7mm of window] (advn) {Co-tenant adversary\\weight-one Pauli};
+  \node[box,below=9mm of window] (synd) {Syndrome\\extraction $\sigma$};
+  \node[dec,left=8mm of synd] (dec) {$\sigma=0$?};
+  \node[trusted,left=8mm of dec] (out) {Accept:\\logical output};
+  \node[box,below=7mm of dec,text width=22mm,minimum height=8mm] (rej) {Reject: discard};
+  \draw[arr] (seed) -- (enc);
+  \draw[arr] (enc) -- (encode);
+  \draw[arr] (encode) -- (window);
+  \draw[arr,cbRed] (advn) -- (window);
+  \draw[arr] (window) -- (synd);
+  \draw[arr] (synd) -- (dec);
+  \draw[arr] (dec) -- node[above,font=\footnotesize]{yes} (out);
+  \draw[arr] (dec) -- node[right,font=\footnotesize]{no} (rej);
+  \draw[arr,dashed,cbRed] (advn.west) -| node[pos=0.25,above,font=\footnotesize]{learns $E$ if fixed} (enc.north);
+  \begin{scope}[on background layer]
+    \node[draw=cbGray,dashed,rounded corners=3pt,fit=(encode)(window)(synd)(dec)(rej)(advn),inner sep=5pt,label={[cbGray,font=\footnotesize]below:shared cloud QPU}] {};
+  \end{scope}
+\end{tikzpicture}
+\caption{The bounded cloud fault model. The client derives a seeded encoder from a validated random-bit generator; on the shared QPU a co-tenant adversary injects one weight-one Pauli fault during the window between encoding and syndrome extraction; runs with a non-trivial syndrome are rejected. A fixed public encoder is learned once by the adversary (dashed arrow); per-run reseeding removes that knowledge. Schematic.}
+\label{fig:qec:threat}
+\end{figure}
+
+\section{Accepted Logical Disturbance}\label{sec:qec:disturbance}
+
+\subsection{Definition}\label{sec:qec:definition}
+
+We need a single number that captures how much harm a fault does \emph{after} rejection has had its chance. Two quantities matter: the probability that the faulty run is accepted, and the fidelity of the accepted logical state with the intended one. A fault that is always rejected does no harm; a fault that is accepted but acts trivially on the logical qubit does no harm; a fault that is accepted and flips the logical qubit does maximal harm. To make the measure independent of the particular logical state, we evaluate it on the logical qubit entangled with a reference qubit $R$, which yields the entanglement fidelity of the induced logical channel.
+
+\begin{definition}[Accepted logical disturbance]\label{def:qec:disturbance}
+Let $E$ be an encoder for a $k=1$ code with code projector $\Pi_E=E\Pi_0E^{\dagger}$, let $\ket{\Phi^{+}}_{AR}=(\ket{00}+\ket{11})/\sqrt2$, let $\ket{\Phi_E}=(E\otimes I_R)\big(\ket{\Phi^{+}}_{AR}\otimes\ket{0^{\,n-1}}_B\big)$ be the encoded half of a maximally entangled pair, and let $P$ be a fault operator. Write $p_{\mathrm{acc}}(E,P)=\norm{(\Pi_E P\otimes I_R)\ket{\Phi_E}}^{2}$ for the acceptance probability and $F_e(E,P)=\abs{\bra{\Phi_E}(P\otimes I_R)\ket{\Phi_E}}^{2}/p_{\mathrm{acc}}(E,P)$ for the entanglement fidelity of the accepted state. The \emph{accepted logical disturbance} is
+\begin{equation}\label{eq:qec:disturbance}
+  \Delta(E,P)\;=\;p_{\mathrm{acc}}(E,P)\,\big(1-F_e(E,P)\big)
+  \;=\;\norm{(\Pi_E P\otimes I_R)\ket{\Phi_E}}^{2}-\abs{\bra{\Phi_E}(P\otimes I_R)\ket{\Phi_E}}^{2}.
+\end{equation}
+\end{definition}
+
+The second form in \cref{eq:qec:disturbance} follows from $\Pi_E\ket{\Phi_E}=\ket{\Phi_E}$ and is the one we compute: it is the probability that the fault is accepted \emph{and} the accepted state lands in the part of the code space orthogonal to the intended one. Several properties are immediate. $\Delta\in[0,1]$. $\Delta=0$ whenever $P$ is rejected with certainty or acts as a logical identity. $\Delta$ is acceptance-weighted, so a fault that slips through with probability $p_{\mathrm{acc}}$ and then does full damage contributes $p_{\mathrm{acc}}$, not one. For an ensemble of encoders $\mathcal{E}$ and the two adversaries of \cref{ass:qec:model} the quantities audited are
+\begin{equation}\label{eq:qec:adversaries}
+  \bar\Delta_{\mathrm{adapt}}(\mathcal{E})=\mathbb{E}_{E\sim\mathcal{E}}\Big[\max_{P\in\mathcal{F}}\Delta(E,P)\Big],\qquad
+  \bar\Delta_{\mathrm{commit}}(\mathcal{E})=\max_{P\in\mathcal{F}}\ \mathbb{E}_{E\sim\mathcal{E}}\big[\Delta(E,P)\big],
+\end{equation}
+and the gap between them is the value of reseeding. When the ensemble is a single fixed encoder the two coincide, which is the formal statement that a fixed encoder offers no protection beyond the code itself. In the experiments of \cref{sec:qec:experiments} the committed adversary's fault is averaged over $\mathcal{F}$ as well as maximized, to report the typical case alongside the worst case; the value $0.020$ quoted there is the mean over faults and seeds, as reported in \cite{guo2026qecaudit}.
+
+\subsection{Clifford Encoders and Pauli Faults}\label{sec:qec:cliffordcase}
+
+For the encoders and faults used in the experiments, \cref{eq:qec:disturbance} collapses to an indicator.
+
+\begin{lemma}\label{lem:qec:indicator}
+Let $E$ be a Clifford encoder and $P\neq I$ a Pauli fault, and write $E^{\dagger}PE=\pm\,L\otimes Q$ with $L$ a Pauli on the logical qubit $A$ and $Q$ a Pauli on the ancillas $B$. Then $P$ is accepted if and only if $Q\in\{I,Z\}^{\otimes(n-1)}$, and
+\begin{equation}\label{eq:qec:indicator}
+  \Delta(E,P)=\mathbb{1}\big[Q\in\{I,Z\}^{\otimes(n-1)}\big]\cdot\mathbb{1}\big[L\neq I\big]\in\{0,1\}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+In the decoded frame the faulty state is $(L\otimes Q\otimes I_R)(\ket{\Phi^{+}}\otimes\ket{0^{\,n-1}})$ up to a phase. If $Q$ contains an $X$ or $Y$ factor it maps $\ket{0^{\,n-1}}$ to an orthogonal computational basis state, so $\Pi_0$ annihilates the state and $p_{\mathrm{acc}}=0$. Otherwise $Q\ket{0^{\,n-1}}=\ket{0^{\,n-1}}$, so $p_{\mathrm{acc}}=1$ and $F_e=\abs{\bra{\Phi^{+}}(L\otimes I)\ket{\Phi^{+}}}^{2}=\abs{\Tr L/2}^{2}$, which equals $1$ if $L=I$ and $0$ otherwise.
+\end{proof}
+
+Two readings of \cref{lem:qec:indicator} are used below. First, $\Delta(E,P)=1$ exactly when $P\in N(\mathcal{S}_E)\setminus\mathcal{S}_E$, that is, when $P$ is an undetectable non-trivial logical operator of the code generated by $E$; hence $\max_{P\in\mathcal{F}}\Delta(E,P)=1$ if and only if the code has distance one, and $\bar\Delta_{\mathrm{adapt}}$ is the fraction of encoders in the ensemble whose code fails to detect some weight-one fault. Second, $\mathbb{E}_E[\Delta(E,P)]$ is the fraction of encoders for which the particular fault $P$ is an undetectable logical, which is what a committed adversary can hope for.
+
+\subsection{Expectation over Haar-Random Encoders}\label{sec:qec:haar}
+
+The Haar-random encoder is the ideal against which structured ensembles are measured. Its expected disturbance has a closed form.
+
+\begin{proposition}[Haar expectation of the accepted logical disturbance]\label{prop:qec:haar}
+Let $d=2^{n}$, $k=1$, and let $P$ be any fixed $n$-qubit operator with $\Tr P=0$ and $P^{2}=I$ (in particular any non-identity Pauli). Then
+\begin{equation}\label{eq:qec:haar}
+  \mathbb{E}_{E\sim\mathrm{Haar}}\big[\Delta(E,P)\big]\;=\;\frac{3d}{2(d^{2}-1)}\;=\;\frac{3\cdot 2^{n}}{2\,(4^{n}-1)},
+\end{equation}
+independently of $P$. The same value is obtained for any unitary 2-design, in particular for the uniform distribution over the $n$-qubit Clifford group. For $k$ logical qubits the constant becomes $d\,(2^{k}-2^{-k})/(d^{2}-1)$.
+\end{proposition}
+\begin{proof}[Proof sketch]
+Set $V=E^{\dagger}PE$. Both terms of \cref{eq:qec:disturbance} are quadratic in $V$, hence in $E$ and $E^{\dagger}$, so only the second moment of $E$ enters and any 2-design gives the Haar value. For Haar $E$ and $\Tr P=0$, $\Tr P^{2}=d$, the standard second-moment identity gives $\mathbb{E}[V\otimes V]=(d\,\mathrm{SWAP}-I)/(d^{2}-1)$, and therefore $\mathbb{E}[VAV]=(d\Tr(A)\,I-A)/(d^{2}-1)$ for any operator $A$. The acceptance term is $\bra{\Phi}(V\Pi_0V\otimes I_R)\ket{\Phi}$ with $\ket{\Phi}=\ket{\Phi^{+}}\otimes\ket{0^{\,n-1}}$; taking $A=\Pi_0$, $\Tr\Pi_0=2$, gives $\mathbb{E}[p_{\mathrm{acc}}]=(2d-1)/(d^{2}-1)$. The fidelity term is $\mathbb{E}\abs{\Tr(V\rho)}^{2}$ with $\rho=\Tr_R\ket{\Phi}\!\bra{\Phi}=\tfrac12 I_A\otimes\ket{0^{\,n-1}}\!\bra{0^{\,n-1}}$, and $\mathbb{E}\abs{\Tr V\rho}^{2}=\Tr[(\rho\otimes\rho)\,\mathbb{E}(V\otimes V)]=(d\Tr\rho^{2}-(\Tr\rho)^{2})/(d^{2}-1)=(d/2-1)/(d^{2}-1)$. Subtracting yields $(2d-1-d/2+1)/(d^{2}-1)=3d/(2(d^{2}-1))$. For general $k$ replace $\Tr\Pi_0=2$ by $2^{k}$ and $\Tr\rho^{2}=1/2$ by $2^{-k}$. The full derivation is given in \cite{guo2026qecaudit}\todo{verify: the paper's normalization of the disturbance and its Haar constant should be checked against \cref{eq:qec:haar}, which uses the entanglement-fidelity form of \cref{def:qec:disturbance}}.
+\end{proof}
+
+For $n=5$, \cref{eq:qec:haar} gives $96/2046\approx 0.0469$, and for $n=17$ it gives $\approx 1.1\times 10^{-5}$; asymptotically the Haar value decays as $\tfrac{3}{2}\,2^{-n}$. The Clifford case offers a consistency check: under the uniform Clifford group $E^{\dagger}PE$ is a uniformly random non-identity Pauli, and by \cref{lem:qec:indicator} the disturbance is one exactly when its ancilla part is $Z$-type ($2^{n-1}$ choices) and its logical part is non-identity ($3$ choices), giving $3\cdot 2^{n-1}/(4^{n}-1)=48/1023$ for $n=5$, in agreement with \cref{eq:qec:haar}. Two remarks frame the experiments. The Haar value is the committed-adversary disturbance of an ensemble with no structure at all; a structured ensemble may lie above it (if its structure leaks) or below it (if its structure happens to favour good codes). And the adaptive-adversary disturbance of any ensemble is at least its committed-adversary disturbance, since a maximum over faults dominates each fault's mean.
+
+\section{The Hadamard-Structured Ensemble}\label{sec:qec:hse}
+
+Haar-random encoders are unimplementable, and even uniformly random Cliffords, though polynomial to sample~\cite{koenig2014clifford}, produce circuits whose depth and connectivity are not under the operator's control. The HSE is a seeded Clifford ensemble designed for the audit: shallow, of fixed layer structure, cheap to derive from a seed, and rich enough to leave the Hadamard-free subgroup of the Clifford group~\cite{bravyi2021hadamardfree}, whose elements map $Z$-type Paulis to $Z$-type Paulis, so that a Hadamard-free encoder produces only $Z$-type stabilizers and cannot detect a single phase-flip fault.
+
+Let $s$ be a seed and $\mathrm{DRBG}(s)$ a deterministic random-bit generator instantiated from it~\cite{nist2015sp80090a}. A depth-$d$ HSE encoder is
+\begin{equation}\label{eq:qec:hse}
+  E_s=\prod_{\ell=1}^{d}\ \mathrm{C}_{M_\ell}\;\Pi_{\sigma_\ell}\;\mathrm{S}_{B_\ell}\;\mathrm{H}_{A_\ell},
+  \qquad
+  \mathrm{H}_{A}=\bigotimes_{i\in A}H_i,\quad
+  \mathrm{S}_{B}=\bigotimes_{i\in B}S_i,\quad
+  \mathrm{C}_{M}=\prod_{(i\to j)\in M}\mathrm{CNOT}_{i\to j},
+\end{equation}
+where in layer $\ell$ the Hadamard subset $A_\ell\subseteq[n]$, the phase subset $B_\ell\subseteq[n]$, the qubit permutation $\sigma_\ell\in S_n$ and the CNOT matching $M_\ell$ (a set of disjoint ordered pairs) are all read from $\mathrm{DRBG}(s)$. \Cref{fig:qec:hse} shows one layer on five qubits. Every factor in \cref{eq:qec:hse} is Clifford, so the stabilizer generators and logical operators of the resulting code follow from \cref{eq:qec:encoder} by tableau conjugation at cost $\bigO{n}$ per gate~\cite{aaronson2004stabilizer}, that is $\bigO{d\,n^{2}}$ for the whole encoder, against the $\bigO{4^{n}}$ cost of writing down a Haar-random unitary. The permutation layer is free on hardware with all-to-all connectivity and costs a SWAP network otherwise; on a fixed coupling graph it can be restricted to permutations realizable in constant depth, which is the topology-compliance constraint that \cref{ch:synthesis} enforced through a reward term. Because the same seed always yields the same circuit, an auditor who holds the seed log can regenerate every encoder that was used and recompute every syndrome that was reported.
+
+The seed budget of the ensemble is small and explicit. Each layer consumes $n$ bits for the Hadamard subset, $n$ bits for the phase subset, about $\log_2 n!\approx n\log_2 n$ bits for the permutation and at most $n\log_2 n$ bits for the matching, so a depth-$d$ encoder is determined by $\bigO{d\,n\log n}$ output bits of the generator---a few hundred bits for the five-qubit experiments and a few thousand at $n=17$. This is well within a single request to an SP 800-90A generator, and it fixes the requirement on the seed source precisely: the security of reseeding against a committed adversary rests on the adversary's inability to predict those bits, which is exactly the property a validated DRBG is certified to provide and which no amount of circuit-level cleverness can substitute for. It also bounds the entropy of the ensemble from above---at most $\bigO{d\,n\log n}$ bits, against the $\Theta(n^{2})$ bits needed to specify a uniformly random Clifford~\cite{koenig2014clifford}---which is why a shallow HSE is not a 2-design and why its disturbance can differ from the value of \cref{prop:qec:haar} in either direction.
+
+% alt: Quantum circuit on five wires showing one layer of the Hadamard-structured ensemble: a Hadamard layer acting on a random subset of qubits, a phase (S) layer on another subset, a permutation drawn as a swap of two wires, and a CNOT layer on a random matching of disjoint pairs. A box marked layers two to d follows, then a box marked syndrome extraction and accept or reject.
+\begin{figure}[htbp]
+\centering
+\begin{quantikz}[row sep={7mm,between origins},column sep=5mm,font=\small]
+\lstick{$\ket{\psi}$} & \gategroup[5,steps=1,style={dashed,rounded corners,fill=cbSky!12,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=0.15cm}]{$\mathrm{H}_{A_\ell}$} & \gate{S}\gategroup[5,steps=1,style={dashed,rounded corners,fill=cbOrange!12,inner xsep=2pt},background,label style={label position=below,anchor=north,yshift=-0.15cm}]{$\mathrm{S}_{B_\ell}$} & \gategroup[5,steps=1,style={dashed,rounded corners,fill=cbGreen!12,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=0.15cm}]{$\Pi_{\sigma_\ell}$} & \ctrl{1}\gategroup[5,steps=1,style={dashed,rounded corners,fill=cbPurple!12,inner xsep=2pt},background,label style={label position=below,anchor=north,yshift=-0.15cm}]{$\mathrm{C}_{M_\ell}$} & \gate[5,style={fill=white}]{\text{layers }2,\dots,d} & \gate[5,style={fill=white}]{\text{syndrome; reject if }\sigma\neq 0} & \\
+\lstick{$\ket{0}$} & \gate{H} &          & \swap{1}  & \targ{}  &  &  & \\
+\lstick{$\ket{0}$} &          & \gate{S} & \targX{}  & \ctrl{1} &  &  & \\
+\lstick{$\ket{0}$} & \gate{H} &          &           & \targ{}  &  &  & \\
+\lstick{$\ket{0}$} &          &          &           &          &  &  &
+\end{quantikz}
+\caption{One layer of a Hadamard-structured-ensemble encoder on $n=5$ qubits: a Hadamard layer on the seeded subset $A_\ell$, a phase layer on $B_\ell$, a qubit permutation $\sigma_\ell$ (drawn as a swap) and a CNOT layer on a seeded matching $M_\ell$, followed by the remaining $d-1$ layers and by syndrome extraction with rejection. Schematic; the subsets shown are one example draw.}
+\label{fig:qec:hse}
+\end{figure}
+
+Not every HSE encoder generates a good code. A draw whose CNOT layers never touch some ancilla leaves that ancilla's $Z$ stabilizer of weight one, and a draw with too few Hadamards leaves the logical operators concentrated on few qubits. The audit does not filter such draws away; it measures how often they occur and how much disturbance they admit, because an operator who reseeds at every run will also draw them. As reported in \cite{guo2026qecaudit}, $18.5\%$ of the sampled HSE encoders satisfy the exact Knill--Laflamme conditions \cref{eq:qec:kl} for all $15$ weight-one faults on five qubits---that is, they generate codes as capable as the \code{5}{1}{3} code against this fault set---and a much larger fraction detect all such faults, which is what rejection needs. The depth $d$ trades cost against quality: deeper ensembles approach the uniform Clifford distribution and hence the 2-design value of \cref{eq:qec:haar}, while shallow ensembles are cheaper and, as the next sections show, can do better than that value against a committed adversary because their structure favours spreading.
+
+\section{The Audit Protocol}\label{sec:qec:protocol}
+
+An audit is a procedure that an operator, a client or a third party can run to certify that the deployed encoder ensemble delivers the disturbance bound it claims, and that the randomness feeding it is of the quality the claim assumes. \Cref{alg:qec:audit} states the procedure; \cref{tab:qec:protocol} maps each step onto the standards that govern it. The protocol has two modes that differ only in when the adversary chooses the fault, mirroring \cref{ass:qec:model}, and two evaluation back-ends: exact enumeration by tableau simulation for Clifford encoders and Pauli faults, and sampled gate-level simulation with Stim~\cite{gidney2021stim} when native noise is included.
+
+\begin{algorithm}[htbp]
+\caption{Randomness audit of a seeded QEC encoder under the bounded cloud fault model.}
+\label{alg:qec:audit}
+\KwIn{Code parameters $(n,k{=}1)$; HSE depth $d$; number of seeds $M$; fault set $\mathcal{F}$ (all $3n$ weight-one Paulis); adversary mode $\in\{\textsc{adaptive},\textsc{committed}\}$; validated DRBG}
+\KwOut{Mean accepted logical disturbance $\bar\Delta$; fraction $\phi_{\mathrm{KL}}$ of encoders satisfying \cref{eq:qec:kl}}
+$\Sigma\leftarrow 0$; $\Phi\leftarrow 0$\;
+\lIf{mode $=$ \textsc{committed}}{adversary commits to $P^{\star}\in\mathcal{F}$ before any seed is drawn}
+\For{$m\leftarrow 1$ \KwTo $M$}{
+  $s_m\leftarrow\textsc{DRBG.Generate}()$ \tcp*{SP 800-90A instance inside a FIPS 140-3 module}
+  $E_m\leftarrow\textsc{HSE}(s_m,d)$; derive $\mathcal{S}_m$, $\bar X_m$, $\bar Z_m$ by tableau conjugation \tcp*{\cref{eq:qec:encoder,eq:qec:hse}}
+  encode $\ket{\psi}\ket{0^{\,n-1}}\mapsto E_m\big(\ket{\psi}\ket{0^{\,n-1}}\big)$ on the QPU\;
+  \eIf{mode $=$ \textsc{adaptive}}{
+    adversary learns $E_m$ and injects $P_m\leftarrow\argmax_{P\in\mathcal{F}}\Delta(E_m,P)$\;
+  }{
+    adversary injects $P_m\leftarrow P^{\star}$\;
+  }
+  measure the syndrome $\sigma(P_m)$ against $\mathcal{S}_m$; \textbf{accept} iff $\sigma=0$, otherwise \textbf{reject}\;
+  $\Sigma\leftarrow\Sigma+\Delta(E_m,P_m)$ \tcp*{\cref{eq:qec:disturbance}; zero on rejection}
+  $\Phi\leftarrow\Phi+\mathbb{1}\big[E_m\text{ satisfies \cref{eq:qec:kl} for }\mathcal{F}\big]$\;
+  append $(m,\ \mathrm{id}(s_m),\ \sigma(P_m),\ \Delta(E_m,P_m))$ to the signed audit log\;
+}
+\Return $\bar\Delta\leftarrow\Sigma/M$, $\phi_{\mathrm{KL}}\leftarrow\Phi/M$\;
+\end{algorithm}
+
+\begin{table}[htbp]
+\caption{Steps of the audit protocol and the randomness and assurance standards each step maps onto. The correspondence follows the standards context of \cite{guo2026qecaudit} and is developed further in \cref{ch:pqc}.}
+\label{tab:qec:protocol}
+\centering\footnotesize
+\begin{tabularx}{\textwidth}{@{}c p{2.9cm} X p{3.9cm}@{}}
+\toprule
+Step & Operation & Requirement audited & Standard \\
+\midrule
+1 & Seed generation & Approved deterministic random-bit generator with a validated entropy source, instantiated inside a validated module & SP 800-90A~\cite{nist2015sp80090a}, SP 800-90B~\cite{nist2018sp80090b}, FIPS 140-3~\cite{nist2019fips1403} \\
+2 & Seed transport to the cloud controller & Confidentiality of the seed against a quantum-capable eavesdropper & ML-KEM, FIPS 203~\cite{nist2024fips203} \\
+3 & Encoder derivation $E_s=\textsc{HSE}(s,d)$ & Determinism and reproducibility from the seed; polynomial cost & \cref{sec:qec:hse} \\
+4 & Encoding on the QPU & Start of the fault window & --- \\
+5 & Fault injection (model) & Adaptive vs.\ committed adversary of \cref{ass:qec:model} & --- \\
+6 & Syndrome extraction and rejection & Trusted measurement of the generators; accept iff $\sigma=0$ & --- \\
+7 & Disturbance accounting & Exact enumeration (tableau) or sampled gate-level simulation (Stim) of $\Delta$ & \cref{eq:qec:disturbance} \\
+8 & Attestation of the audit log & Integrity and non-repudiation of seeds, syndromes and disturbances & ML-DSA / SLH-DSA, FIPS 204/205~\cite{nist2024fips204,nist2024fips205} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two features of the protocol deserve emphasis. First, it is \emph{reproducible by construction}: because encoders are derived deterministically from logged seeds, an auditor can regenerate every encoder, recompute every stabilizer and verify every reported syndrome; the artifact of \cite{guo2026qecaudit} is containerized and seeded for exactly this reason. Second, it is \emph{standards-facing} (the relevant standards are reviewed in \cref{sec:bg:crypto}): the quality of the defense rests on the unpredictability of the seed, so the seed source must itself be an approved generator in a validated module---an SP 800-90A DRBG~\cite{nist2015sp80090a} fed by an SP 800-90B entropy source~\cite{nist2018sp80090b} and operated under FIPS 140-3~\cite{nist2019fips1403}---and the seed's transport and the log's attestation are natural applications of the post-quantum standards ML-KEM and ML-DSA/SLH-DSA~\cite{nist2024fips203,nist2024fips204,nist2024fips205}. The mapping in \cref{tab:qec:protocol} is the one we propose\todo{verify the standards mapping and the attestation step against the paper's Section on standards}; \cref{ch:pqc} describes the FIPS 140-3 module that would implement steps 1, 2 and 8.
+
+\section{Experiments}\label{sec:qec:experiments}
+
+\subsection{Setup}\label{sec:qec:setup}
+
+Two experimental regimes were used in \cite{guo2026qecaudit}. In the \emph{exact} regime the code is the \code{5}{1}{3} code of \cref{tab:qec:code513} ($n=5$), the fault set is all $3n=15$ weight-one Paulis, encoders are HSE draws, and $\Delta$ is evaluated exactly by \cref{lem:qec:indicator} using tableau simulation; native noise is absent, so every non-zero disturbance is attributable to the encoder ensemble and the adversary. The adaptive adversary evaluates all $15$ faults against each encoder and injects the worst; the committed adversary's fault is fixed before the seed is drawn, and results are reported averaged over the choice of fault. In the \emph{gate-level} regime the register has $n=17$ qubits, encoders and syndrome-extraction circuits are compiled to gates and simulated with Stim~\cite{gidney2021stim} under depolarizing noise with single-qubit rate $p_1=10^{-3}$ and two-qubit rate $p_2=10^{-2}$, and $\Delta$ is estimated by sampling; this regime tests whether the exact-regime conclusions survive realistic noise and larger $n$. Seeds were drawn from a DRBG in both regimes, and the number of seeds\todo{add the number of seeds $M$ and the HSE depth $d$ used in each regime} was chosen so that the reported means have negligible sampling error relative to the effects measured.
+
+\subsection{Results on the Five-Qubit Code}\label{sec:qec:results513}
+
+\Cref{tab:qec:results} summarizes the exact-regime results and \cref{fig:qec:disturbance} plots them. Against the adaptive adversary---equivalently, against a fixed and therefore learnable encoder---the mean accepted logical disturbance is $0.150$: by \cref{lem:qec:indicator}, $15\%$ of HSE draws generate a code in which some weight-one fault is an undetectable logical operator, and the adaptive adversary finds it. Against the committed adversary the mean is $0.020$: for a fault chosen before the seed, only $2\%$ of (encoder, fault) pairs let the fault through as a harmful logical. The reduction is $(0.150-0.020)/0.150=86.7\%$, and it is attributable to \emph{rejection}: the same faults are injected in both settings, but under reseeding the fault that would have been an undetectable logical for one encoder anticommutes with a stabilizer of the next and is caught. The 2-design reference of \cref{prop:qec:haar}, $0.0469$ for $n=5$, sits between the two measured values, as anticipated in \cref{sec:qec:haar}: the structured ensemble does better than a uniformly random Clifford against a committed adversary and, necessarily, worse against an adaptive one. Finally, $18.5\%$ of the sampled encoders satisfy the exact conditions \cref{eq:qec:kl} for the full weight-one fault set, so nearly one draw in five is a genuine distance-three code.
+
+\begin{table}[htbp]
+\caption{Exact-regime audit results on the \code{5}{1}{3} code with all $15$ weight-one Pauli faults. Measured values are as reported in \cite{guo2026qecaudit}; the 2-design reference is computed from \cref{eq:qec:haar}.}
+\label{tab:qec:results}
+\centering\footnotesize
+\begin{tabularx}{\textwidth}{@{}X c X@{}}
+\toprule
+Quantity & Value & Interpretation (\cref{lem:qec:indicator}) \\
+\midrule
+Code; fault set & \code{5}{1}{3}; $3n=15$ Paulis & all weight-one faults enumerated \\
+$\bar\Delta_{\mathrm{adapt}}$ (fixed encoder, adaptive adversary) & $0.150$ & fraction of draws with a distance-one code \\
+$\bar\Delta_{\mathrm{commit}}$ (reseeded encoder, committed fault) & $0.020$ & fraction of (draw, fault) pairs accepted and harmful \\
+Relative reduction & $86.7\%$ & attributable to syndrome-based rejection \\
+Encoders satisfying \cref{eq:qec:kl} for $\mathcal{F}$ & $18.5\%$ & distance-three codes among HSE draws \\
+2-design (Haar) reference, $n=5$ & $0.0469$ & $3\cdot 2^{n}/(2(4^{n}-1))$, \cref{prop:qec:haar} \\
+Gate-level regime & $n=17$; $p_1=10^{-3}$, $p_2=10^{-2}$ & Stim; scaling confirmed \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% alt: Two-panel figure. Left, a bar chart with three bars: fixed encoder with adaptive adversary at 0.150, reseeded encoder with committed fault at 0.020, and the 2-design reference at 0.047. Right, a line chart of mean accepted logical disturbance versus HSE depth from 0 to 6 with two curves, adaptive and committed, both decreasing from their depth-zero values of 1.0 and 0.2 toward the reported values 0.150 and 0.020 at the working depth, with a dashed horizontal 2-design reference line at 0.047.
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\linewidth,height=0.82\linewidth,
+  ybar,bar width=7mm,
+  ymin=0,ymax=0.2,ytick={0,0.05,0.10,0.15,0.20},
+  ylabel={mean disturbance $\bar\Delta$},
+  symbolic x coords={fixed,reseeded,2-design},
+  xtick={fixed,reseeded,2-design},
+  xticklabels={fixed\\adaptive,reseeded\\committed,2-design\\reference},
+  xticklabel style={align=center,font=\footnotesize},
+  yticklabel style={/pgf/number format/fixed},
+  nodes near coords={\pgfmathprintnumber[fixed,precision=3]{\pgfplotspointmeta}},
+  nodes near coords style={font=\footnotesize},
+  enlarge x limits=0.4,
+  cycle list={{fill=cbRed!70,draw=cbRed},{fill=cbBlue!70,draw=cbBlue},{fill=cbGray!35,draw=cbGray,densely dotted}},
+  ]
+\addplot coordinates {(fixed,0.150)};
+\addplot coordinates {(reseeded,0.020)};
+\addplot coordinates {(2-design,0.047)};
+\end{axis}
+\end{tikzpicture}
+\caption{Reported values on the \code{5}{1}{3} code.}
+\label{fig:qec:disturbance-bars}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{semilogyaxis}[
+  width=\linewidth,height=0.82\linewidth,
+  xlabel={HSE depth $d$ (layers)},
+  ylabel={$\bar\Delta$},
+  xmin=-0.3,xmax=6.5,ymin=0.004,ymax=1.5,
+  xtick={0,1,2,3,4,5,6},
+  legend pos=south west,legend cell align=left]
+\addplot[cbRed,mark=diamond*,dashdotted,thick] coordinates {(0,1.0) (1,0.70) (2,0.45) (3,0.30) (4,0.22) (5,0.17) (6,0.150)};
+\addlegendentry{adaptive (fixed)}
+\addplot[cbBlue,mark=*,solid,thick] coordinates {(0,0.20) (1,0.12) (2,0.07) (3,0.045) (4,0.030) (5,0.024) (6,0.020)};
+\addlegendentry{committed (reseeded)}
+\addplot[cbGray,dashed,no marks,thick] coordinates {(-0.3,0.0469) (6.5,0.0469)};
+\addlegendentry{2-design reference}
+\end{semilogyaxis}
+\end{tikzpicture}
+\caption{Dependence on HSE depth (illustrative).}
+\label{fig:qec:disturbance-depth}
+\end{subfigure}
+\caption{Accepted logical disturbance on the \code{5}{1}{3} code with all $15$ weight-one faults. (a) Values reported in \cite{guo2026qecaudit} for a fixed encoder facing an adaptive adversary ($0.150$) and a reseeded encoder facing a committed fault ($0.020$), with the 2-design reference $0.0469$ from \cref{eq:qec:haar}. (b) The depth-$0$ values ($1.0$ and $0.20$) are exact for the identity encoder and the depth-$6$ values are the reported ones, placed at the working depth\todo{verify the HSE depth used for the reported values}; intermediate points are illustrative and are not measured data.}
+\label{fig:qec:disturbance}
+\end{figure}
+
+The depth dependence in \cref{fig:qec:disturbance-depth} makes the mechanism visible. At depth zero the encoder is the identity, the ancillas are unprotected and any fault on the logical qubit is accepted and harmful: the adaptive adversary always wins ($\bar\Delta_{\mathrm{adapt}}=1$) and a committed fault is harmful in $3$ of $15$ cases ($\bar\Delta_{\mathrm{commit}}=0.20$), both exactly. Each additional layer spreads the logical operators over more qubits and converts more weight-one faults into detectable ones; the committed curve falls quickly because a randomly placed fault rarely aligns with the few remaining weight-one logicals, whereas the adaptive curve falls only as fast as the fraction of distance-one draws does, since the adaptive adversary needs just one such logical to exist.
+
+Because $\Delta$ is an indicator in this regime (\cref{lem:qec:indicator}), the audited means are Bernoulli proportions and their precision is elementary: with $M$ seeds the standard error of an estimated mean $\bar\Delta$ is $\sqrt{\bar\Delta(1-\bar\Delta)/M}$, so $M=10^{4}$ seeds resolve $\bar\Delta_{\mathrm{commit}}=0.020$ to $\pm 0.0014$ and $\bar\Delta_{\mathrm{adapt}}=0.150$ to $\pm 0.0036$, and the $86.7\%$ reduction is established far beyond sampling error at that budget. This is what makes the audit practical: each seed costs one tableau computation of $\bigO{d\,n^{2}}$ operations and $3n$ syndrome checks, so an operator can certify an ensemble to three significant figures in seconds on a laptop, and can re-certify it whenever the depth, the coupling graph or the fault set changes.
+
+\subsection{Gate-Level Simulations at Seventeen Qubits}\label{sec:qec:results17}
+
+The exact regime isolates the encoder but ignores noise. In the gate-level regime of \cite{guo2026qecaudit}, HSE encoders on $n=17$ qubits were compiled to gates and simulated in Stim with depolarizing noise of $p_1=10^{-3}$ and $p_2=10^{-2}$, syndrome extraction was itself noisy, and the disturbance was estimated by sampling. The qualitative picture, sketched in \cref{fig:qec:stim}, is the one the exact regime predicts. Noise alone produces a logical disturbance that scales as a power of the physical rate set by the code distance of the draw; an adaptive adversary adds a floor that noise cannot lower, because it is the fraction of draws with an undetectable weight-one logical; reseeding lowers that floor by the same mechanism as at $n=5$. The paper reports that the reduction attributable to rejection persists at $n=17$ under noise and that its magnitude follows the scaling of the exact analysis\todo{add the $n=17$ disturbance values and the noise-only baseline from the paper}. Two effects that the exact regime cannot show appear here. Noisy syndrome extraction can misreport a trivial syndrome as non-trivial, which raises the rejection rate and therefore lowers the accepted disturbance at the price of throughput, and it can misreport a non-trivial syndrome as trivial, which lets a fault through that the ideal check would have caught; both effects grow with $p_2$ and with the depth of the extraction circuit, and both favour shallow encoders.
+
+% alt: Log-log schematic of accepted logical disturbance versus two-qubit depolarizing rate for a seventeen-qubit register. A noise-only curve rises quadratically. A fixed-encoder-with-adaptive-adversary curve sits on a high floor and rises at large noise. A reseeded-encoder-with-committed-fault curve sits on a lower floor. A vertical dashed line marks the operating point p2 equals one percent.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{loglogaxis}[
+  xlabel={two-qubit depolarizing rate $p_2$ (with $p_1=p_2/10$)},
+  ylabel={accepted logical disturbance (schematic)},
+  xmin=8e-4,xmax=7e-2,ymin=1e-5,ymax=20,
+  legend pos=north west,legend cell align=left]
+\addplot[cbRed,mark=diamond*,dashdotted,thick] coordinates {(1e-3,0.1000) (2e-3,0.1001) (5e-3,0.1008) (1e-2,0.103) (2e-2,0.112) (5e-2,0.175)};
+\addlegendentry{fixed encoder, adaptive adversary}
+\addplot[cbBlue,mark=*,solid,thick] coordinates {(1e-3,0.01003) (2e-3,0.01012) (5e-3,0.01075) (1e-2,0.013) (2e-2,0.022) (5e-2,0.085)};
+\addlegendentry{reseeded encoder, committed fault}
+\addplot[cbGreen,mark=triangle*,dotted,thick] coordinates {(1e-3,3e-5) (2e-3,1.2e-4) (5e-3,7.5e-4) (1e-2,3e-3) (2e-2,1.2e-2) (5e-2,7.5e-2)};
+\addlegendentry{noise only, no adversary}
+\addplot[cbGray,dashed,no marks] coordinates {(1e-2,1e-5) (1e-2,1)};
+\node[anchor=south west,font=\footnotesize,cbGray] at (axis cs:1.05e-2,1.5e-5) {operating point $p_2=10^{-2}$};
+\end{loglogaxis}
+\end{tikzpicture}
+\caption{Schematic of the gate-level regime studied at $n=17$ in \cite{guo2026qecaudit}: a noise-only disturbance that grows as a power of the physical error rate, an adversarial floor for a fixed encoder, and a lower floor after reseeding. The curves illustrate the qualitative form and are not measured values; only the operating point $p_1=10^{-3}$, $p_2=10^{-2}$ is taken from the paper.}
+\label{fig:qec:stim}
+\end{figure}
+
+\section{Discussion and Limitations}\label{sec:qec:discussion}
+
+\emph{Weight-one faults.} The bounded model allows one weight-one Pauli per run. This is the natural first case and the one a code is built for, but a co-tenant who can drive crosstalk on a coupler can plausibly produce correlated weight-two faults, and an adversary who controls timing can inject in more than one window. Extending the fault set to weight two makes \cref{lem:qec:indicator} and \cref{alg:qec:audit} unchanged in form---the audit enumerates $\mathcal{F}$, whatever it is---but raises its cost from $3n$ to $\bigO{n^{2}}$ faults per encoder and lowers the fraction of HSE draws that detect everything, so the disturbance values would rise. The Haar expectation of \cref{prop:qec:haar} holds for any traceless Hermitian unitary fault, so it remains the reference.
+
+\emph{Small codes.} The exact experiments use $n=5$, where everything can be enumerated, and the gate-level experiments $n=17$. Neither is a code size at which fault-tolerant computation will run. What scales is the method: tableau simulation is polynomial, Stim handles thousands of qubits, and the disturbance is defined for any code. What does not obviously scale is the \emph{ensemble}: at large $n$ a shallow HSE draw will rarely be a good code, and the operator will want to reseed within a family of encoders known to be good---for instance, by randomizing the encoding circuit of a fixed surface or bicycle code~\cite{fowler2012surfacecodes,bravyi2024bicycle} through its automorphisms and gauge freedoms rather than by drawing an arbitrary Clifford. The audit applies unchanged to such constrained ensembles.
+
+\emph{Adversary model.} The adaptive adversary of \cref{ass:qec:model} is strong in knowledge (it learns the encoder exactly) and weak in capability (one Pauli). Real adversaries are the reverse: they see side channels rather than circuits, and they may cause more than one fault. The committed adversary, by contrast, is a faithful model of an attacker facing a fresh seed, provided the seed is unpredictable, which is why the standards mapping of \cref{tab:qec:protocol} is part of the defense rather than decoration. The model also treats syndrome extraction as trusted; an adversary who can fault the ancillas used for extraction attacks a different surface, for which flag qubits and repeated extraction are the standard remedies.
+
+\emph{Rejection versus correction.} Rejection is the cleanest primitive to audit, but computation needs correction. With correction, the quantity that survives is the disturbance after the decoder has applied its recovery, and an adaptive adversary can target faults whose syndrome the decoder maps to the wrong recovery. The definition of \cref{def:qec:disturbance} extends directly by replacing $\Pi_E$ with the decoder's recovery map, and reseeding helps for the same reason: the map from fault to syndrome changes with the seed. Quantifying this extension is the most important next step.
+
+\emph{Throughput cost of rejection.} Rejection buys safety with discarded runs. In the exact regime the only rejected runs are those in which a fault was injected and caught, so the throughput cost is the adversary's injection rate; under native noise, however, every run has a non-zero probability of a non-trivial syndrome, and the acceptance rate falls roughly as $(1-p_2)^{G_2}$ with $G_2$ the number of two-qubit gates in the encoder and extraction circuits. At $p_2=10^{-2}$ and a few dozen two-qubit gates this is a tens-of-percent overhead, which is tolerable for an audit but not for a long computation; the operational regime is correction, with rejection reserved for the audit itself and for the highest-assurance runs.
+
+\emph{Cost of reseeding.} Every reseed costs a new compilation of the encoder and, on a fixed coupling graph, possibly a new routing. The HSE keeps this cheap because its layer structure is fixed and only the subsets, permutation and matching change; the learned synthesis of \cref{ch:synthesis} suggests a complementary route in which a policy trained with a Clifford-correctness and topology-compliance reward emits compliant encoders for each seed directly.
+
+\section{Relation to the Other Chapters}\label{sec:qec:relation}
+
+This chapter is the point where the dissertation's security thread attaches to its error-correction thread, and it connects backward and forward. Backward, the Clifford-correctness term of the \rubriq{} rubric in \cref{ch:synthesis} is a tableau check of exactly the kind that \cref{alg:qec:audit} performs to derive stabilizers and logicals, and the T-count that \rubriq{} minimizes is the cost that the codes of this chapter impose on non-Clifford logic; a synthesizer that respects both constraints is the natural compiler for seeded, topology-compliant encoders. The gate-level simulations relied on Stim rather than on the GPU state-vector simulation of \cref{ch:qgear}, because stabilizer circuits admit polynomial simulation; the two simulators are complementary, and the non-Clifford logical operations of a full fault-tolerant computation would need the state-vector path. Forward, the protocol of \cref{sec:qec:protocol} places three requirements on classical cryptography---an approved DRBG in a validated module for the seed, a post-quantum key-encapsulation mechanism for its transport, and a post-quantum signature for the audit log---and \cref{ch:pqc} presents the FIPS 140-3 module with ML-KEM, ML-DSA and SLH-DSA support~\cite{guo2026lightriderqpc} that would meet them. The two chapters together answer RQ5: error-corrected computation on shared hardware becomes auditable when its randomness is defined, measured and sourced to the same standard as the randomness in a cryptographic module.
+
+\section{Summary}\label{sec:qec:summary}
+
+We studied a security threat specific to error-corrected computation on shared cloud QPUs: a fixed, public encoder gives a co-located fault injector a reusable target. We formalized a bounded cloud fault model, defined the accepted logical disturbance as the acceptance-weighted harmful logical action that survives syndrome-based rejection, showed that for Clifford encoders and Pauli faults it reduces to an indicator of undetectable logicals, and derived its exact expectation $3\cdot 2^{n}/(2(4^{n}-1))$ over Haar-random encoders, valid for any unitary 2-design. We introduced the Hadamard-structured ensemble as a polynomial-cost seeded Clifford substitute for Haar encoders and specified an audit protocol that is reproducible from logged seeds and maps onto SP 800-90A, FIPS 140-3 and FIPS 203/204/205. On the \code{5}{1}{3} code with all $15$ weight-one faults, reseeding reduced the mean accepted logical disturbance from $0.150$ to $0.020$---an $86.7\%$ reduction attributable to rejection---while $18.5\%$ of HSE draws satisfied the exact error-correction conditions, and gate-level Stim simulations at $n=17$ under depolarizing noise confirmed the scaling~\cite{guo2026qecaudit}. The seed source is the hinge on which the whole defense turns, and the next chapter builds it.

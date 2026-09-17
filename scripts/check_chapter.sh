@@ -7,12 +7,17 @@ rel="${1:?usage: check_chapter.sh chapters/chNN-name.tex}"
 name="$(basename "${rel%.tex}")"
 mkdir -p "$here/thesis/build-check"
 cd "$here/thesis"
+# Per-chapter bibliographies (bib/extra-chNN.bib, see WRITING_GUIDE.md) are loaded alongside refs.bib.
+extrabib=""
+for f in "$here"/bib/extra-*.bib; do
+  [ -e "$f" ] && extrabib="$extrabib\\addbibresource{$f}"$'\n'
+done
 cat > "build-check/check-$name.tex" <<TEX
 \documentclass[dissertation,doublespacing,leftmargin15]{ttuthesis}
 \input{preamble}
 \title{Check build}\author{Ziqing Guo}
 \addbibresource{$here/bib/refs.bib}
-\begin{document}
+${extrabib}\begin{document}
 \ttumainmatter
 \input{$rel}
 \ttureferences

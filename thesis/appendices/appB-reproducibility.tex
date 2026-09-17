@@ -1,1 +1,99 @@
-% stub
+\chapter{Reproducibility and Research Artifacts}\label{app:repro}
+
+This appendix records, for every research chapter, the published paper, the code repository, the archived software or data release and the hardware and software needed to reproduce the results, followed by the acknowledgments required by the computing facilities used, a note on seeds, determinism and container images, and data-availability statements. The inventory is compiled from the publication records and repository metadata current in September 2026; items that could not be confirmed are marked.
+
+\section{Artifact Inventory}\label{sec:apprepro:inventory}
+
+\Cref{tab:apprepro:artifacts} lists the artifacts chapter by chapter. Repository names are under the GitHub account \url{https://github.com/gzquse} unless a full address is given. Where a paper has both a preprint and a published version, the published DOI is given in the bibliography entry and the arXiv identifier is repeated here for convenience.
+
+\begingroup\singlespacing\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{longtable}{@{}L{1.1cm}L{2.15cm}L{1.7cm}L{3.0cm}L{2.75cm}L{3.1cm}@{}}
+\caption{Research artifacts by chapter: publication, arXiv identifier, code repository, archived release with license, and the hardware and software required. Compiled from the records cited in each row.}
+\label{tab:apprepro:artifacts}\\
+\toprule
+Chapter & Work & arXiv & Code repository & Archive / license & Hardware / software \\
+\midrule
+\endfirsthead
+\multicolumn{6}{@{}l}{\tablename\ \thetable{}. Continued}\\
+\toprule
+Chapter & Work & arXiv & Code repository & Archive / license & Hardware / software \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r@{}}{\emph{Continued on next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+\labelcref{ch:qgear} & \qgear{}~\cite{guo2025qgear} & 2504.03967 & \texttt{qgear} (Apache-2.0); \texttt{cudaq-\allowbreak perlmutter} & ACM DOI 10.1145/\allowbreak 3754598.3754608; software~\cite{guo2025qgearsoftware} & Perlmutter A100 nodes (up to 1,024 GPUs); \cudaq{}, \qiskit{}, Podman-HPC / Shifter, Slurm \\
+\labelcref{ch:nisq} & \deal{}~\cite{guo2025deal} & 2504.04021 & \texttt{DEAL\_QUBO} & IEEE DOI 10.1109/\allowbreak QCE65121.\allowbreak 2025.10343 & \texttt{ibm\_torino}, \texttt{ibm\_marrakesh}; D-Wave Leap (annealing baseline); \qiskit{} GPU kernel; TTU HPCC \\
+\labelcref{ch:nisq} & \qawa{}~\cite{guo2025qawa} & 2511.07676 & \texttt{qawa\_data\_circ} & preprint only & \texttt{ibm\_pittsburgh}; \qiskit{}~2.2 with Aer HPC backend \\
+\labelcref{ch:qml} & \qpie{}~\cite{guo2025qpie} & 2504.04235 & \texttt{QPIE\_\allowbreak datacircuit} & IOP DOI 10.1088/\allowbreak 2058-9565/\allowbreak ade89f & Amazon Braket SV1, IonQ Aria-1, A100 80\,GB; PennyLane; PyTorch 24.06 Shifter container \\
+\labelcref{ch:qml} & \vqt{}~\cite{guo2025vqt} & 2508.18464 & \texttt{quantum-\allowbreak transformer}; \texttt{paper\_\allowbreak AAAI2025-\allowbreak quantum}; \texttt{vectorized\_\allowbreak encoding} & AAAI DOI 10.1609/\allowbreak aaaiss.v7i1.36905 & \texttt{ibm\_kingston}, IonQ Aria-1; ideal simulator; Mathematica notebooks \\
+\labelcref{ch:qml} & \shardq{}~\cite{guo2025shardq} & 2511.05492 & \texttt{ShardQ\_v2} (MIT) & preprint only & \texttt{ibm\_pittsburgh} (Heron r3), \texttt{ibm\_marrakesh} (Heron r2); A100 80\,GB nodes; \texttt{qiskit-addon-\allowbreak cutting} \\
+\labelcref{ch:qml} & \nnqa{}~\cite{guo2026nnqa} & 2603.27297 & \texttt{nnqa} (MIT) & preprint only & \texttt{ibm\_boston}, \texttt{ibm\_miami}, IonQ Forte-1; Perlmutter A100 for training \\
+\labelcref{ch:synthesis} & \rubriq{}~\cite{guo2026rubriq} & 2607.07554 & \texttt{rubriq-artifact} & Zenodo 10.5281/\allowbreak zenodo.\allowbreak 21284556 (CC-BY-4.0)~\cite{guo2026rubriqsoftware} & Perlmutter, 4--8 A100 nodes; DeepSpeed ZeRO-2; \cudaq{}; PyTorch CUDA 12.1; IBM Heron-3, IonQ Forte \\
+\labelcref{ch:synthesis} & Nonlinear waves~\cite{guo2026nonlinearwaves} & 2608.21647 & SplitStepQUDE \todo{confirm repository name} & Zenodo 10.5281/\allowbreak zenodo.\allowbreak 21245905 (CC-BY-4.0 / Apache-2.0)~\cite{guo2026splitstepqude} & IBM Heron processor; classical split-step solver \\
+\labelcref{ch:qec} & QEC audit~\cite{guo2026qecaudit} & 2608.26600 & anonymous.4open.\allowbreak science/\allowbreak r/usenix\_qec\_\allowbreak hse-32FE; \texttt{ExploreQEC\_mar} (Apache-2.0) & preprint only & Stim; containerized, seeded, deterministic \\
+\labelcref{ch:pqc} & QPC SDK~\cite{guo2026lightriderqpc} & --- & binary release & Zenodo 10.5281/\allowbreak zenodo.\allowbreak 21895102 (CC-BY-4.0), v1.0.0 & Linux x86\_64 \\
+\labelcref{ch:pqc} & NIST tracker~\cite{guo2026nisttracker} & --- & \texttt{quantum\_\allowbreak news-NIST} & --- & GitHub Actions \\
+\end{longtable}
+\endgroup
+
+\section{Computing Resources and Acknowledgments}\label{sec:apprepro:hpc}
+
+The GPU simulations of \cref{ch:qgear}, the circuit-knitting and training runs of \cref{ch:qml} and the reinforcement-learning runs of \cref{ch:synthesis} were performed on the Perlmutter system at the National Energy Research Scientific Computing Center. The following acknowledgment applies to all of them and is reproduced in the form requested by the facility:
+
+\begin{quote}
+This research used resources of the National Energy Research Scientific Computing Center, a DOE Office of Science User Facility supported by the Office of Science of the U.S. Department of Energy under Contract No.\ DE-AC02-05CH11231 using NERSC award DDR-ERCAP0034486 and supported by TTU HPCC center.
+\end{quote}
+
+The \vqt{} work additionally used NERSC award DDR-ERCAP0034385 and resources of the National Quantum Laboratory at the University of Maryland. The \deal{}, \qawa{} and \qpie{} studies additionally used the Texas Tech University High Performance Computing Center (HPCC) for classical preprocessing, distributed training and job orchestration.
+
+\section{Cloud Quantum-Processor Access}\label{sec:apprepro:qpu}
+
+Hardware experiments were executed on cloud-accessible processors from three providers. \Cref{tab:apprepro:devices} lists the devices and the chapters in which they appear; qubit counts and processor generations are those published by the providers at the time of the experiments. IBM Quantum devices were accessed through the IBM Quantum Platform. IonQ Aria-1 and Forte-1 were accessed through Amazon Braket, with credits provided by Xanadu, and through the IonQ cloud API. The D-Wave Leap service was used for the annealing baseline of the \deal{} vehicle-routing benchmark. Every hardware result in this dissertation is accompanied in the corresponding repository by the job identifiers, the shot counts and the calibration snapshot in effect at execution time, because device calibration drifts and a later re-run will not reproduce the same counts.
+
+\begin{table}[htbp]
+\caption{Cloud quantum processors used in this dissertation. Qubit counts are the providers' published values.}
+\label{tab:apprepro:devices}
+\centering
+\begingroup\singlespacing\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{3.5cm}r>{\raggedright\arraybackslash}p{4.2cm}@{}}
+\toprule
+Device & Provider / processor & Qubits & Used in \\
+\midrule
+\texttt{ibm\_torino} & IBM Heron r1 & 133 & \cref{ch:nisq} (\deal{}) \\
+\texttt{ibm\_marrakesh} & IBM Heron r2 & 156 & \cref{ch:nisq} (\deal{}), \cref{ch:qml} (\shardq{}) \\
+\texttt{ibm\_kingston} & IBM Heron r2 & 156 & \cref{ch:qml} (\vqt{}) \\
+\texttt{ibm\_pittsburgh} & IBM Heron r3 & 156 & \cref{ch:nisq} (\qawa{}), \cref{ch:qml} (\shardq{}) \\
+\texttt{ibm\_boston} & IBM Heron r3 & 156 & \cref{ch:qml} (\nnqa{}), \cref{ch:synthesis} (\rubriq{}) \\
+\texttt{ibm\_miami} & IBM Nighthawk & 120\todo{verify} & \cref{ch:qml} (\nnqa{}) \\
+IonQ Aria-1 & IonQ trapped ion (AWS Braket) & 25 & \cref{ch:qml} (\qpie{}, \vqt{}) \\
+IonQ Forte-1 & IonQ trapped ion & 36 & \cref{ch:qml} (\nnqa{}), \cref{ch:synthesis} (\rubriq{}) \\
+D-Wave Leap & D-Wave Advantage annealer & --- & \cref{ch:nisq} (\deal{} baseline) \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}
+
+\section{Seeds, Determinism and Container Images}\label{sec:apprepro:seeds}
+
+Three sources of non-determinism affect the results and are handled differently. Classical simulation and training are made reproducible by fixed seeds: the \qgear{} random-circuit generators, the \rubriq{} artifact exposes a seed for its training and evaluation runs, and the Stim simulations of \cref{ch:qec} take an explicit seed, and the QEC-audit artifact is packaged as a container that runs a seeded, deterministic pipeline from encoder sampling to the final statistics. GPU floating-point reductions are not bitwise reproducible across different GPU counts, so state-vector amplitudes from multi-GPU runs agree with single-GPU runs only to floating-point tolerance, and the benchmarks of \cref{ch:qgear} report timings rather than amplitudes. Hardware execution is inherently stochastic; the repositories therefore archive raw counts rather than derived statistics, together with the number of shots and repetitions, so that any statistic in the text can be recomputed.
+
+The software environments are pinned through containers. The \qgear{} runs used a \cudaq{} image executed with Podman-HPC or Shifter on Perlmutter (\cref{app:qgear}); the \qpie{} runs used the NVIDIA PyTorch 24.06 image with a PennyLane layer described by the repository's \texttt{Dockerfile.pennylane}; the \rubriq{} artifact specifies a conda environment with PyTorch for CUDA 12.1 and ships 21 evaluator integration tests that must pass before training; and the QEC audit ships its own container. Version pins for \qiskit{} (2.2 for \qawa{}), \texttt{qiskit-addon-\allowbreak cutting} (\shardq{}) and Stim are recorded in each repository's requirements file. The QPC SDK of \cref{ch:pqc} is a binary release for Linux x86\_64 whose self-tests, described in \cref{sec:pqc:selftests}, verify the integrity of the installed image at load time.
+
+\section{Data Availability by Chapter}\label{sec:apprepro:data}
+
+\emph{\Cref{ch:qgear}.} The benchmark circuits (random CX-block circuits, QFT and \qcrank{} image encodings), the HDF5 files and the timing logs are generated by the notebooks and scripts in the \texttt{qgear} repository; no proprietary data are involved.
+
+\emph{\Cref{ch:nisq}.} The QUBO instances (travelling-salesman, knapsack, MaxCut), the IBM job records and the D-Wave baseline for \deal{} are in \texttt{DEAL\_QUBO}; the \qawa{} portfolio data are derived from historical prices of four S\&P~500 constituents (AAPL, MSFT, JNJ, XOM), and the processed correlation targets and hardware counts are in \texttt{qawa\_data\_circ}.
+
+\emph{\Cref{ch:qml}.} The Moon, Spiral, Hymenoptera, MNIST and NARMA data sets used by \qpie{} are public; the brain-tumor MRI set is a publicly available research collection.\todo{confirm the source and license of the MRI data set} The Brown-corpus language-modelling data of \vqt{} are public. Hardware counts for \vqt{}, \shardq{} and \nnqa{} are archived in the respective repositories.
+
+\emph{\Cref{ch:synthesis}.} The 1,500 benchmark circuits and the rubric evaluators of \rubriq{} are in the Zenodo release; the fine-tuned model weights (about \SI{200}{\giga\byte}) are regenerated by the training scripts.\todo{confirm whether the weights are archived} The SplitStepQUDE release contains the solver, the IBM kernel submissions and the data behind every figure of the nonlinear-waves study.
+
+\emph{\Cref{ch:qec}.} All encoder samples, fault enumerations and Stim outputs are regenerated deterministically by the containerized artifact; no hardware data are involved.
+
+\emph{\Cref{ch:pqc}.} The QPC SDK is available from Zenodo under CC-BY-4.0; the standardization timeline is maintained in the \texttt{quantum\_\allowbreak news-NIST} repository. No experimental data are reported in that chapter.

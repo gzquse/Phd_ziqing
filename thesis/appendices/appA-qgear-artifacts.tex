@@ -1,3 +1,135 @@
-\chapter{Q-GEAR Artifacts}
-Appendix text.
-\begin{table}[htbp]\caption{Appendix table.}\centering\begin{tabular}{lr}\toprule A&1\\\bottomrule\end{tabular}\end{table}
+\chapter{Q-GEAR Configuration and Usage}\label{app:qgear}
+
+This appendix collects the operational details of the \qgear{} framework of \cref{ch:qgear} that are needed to reproduce the simulation results but do not belong in the main text: the environment setup on the NERSC Perlmutter system, the HDF5 layout used to move circuits between the \qiskit{} front end and the \cudaq{} back end, a minimal Python usage example, a Slurm batch skeleton for a multi-node GPU job, and the gate mapping that the transformer implements. The software is released under the Apache-2.0 license at \url{https://github.com/gzquse/qgear}~\cite{guo2025qgearsoftware}; the multi-node launch scripts derive from the \texttt{cudaq-perlmutter} repository at \url{https://github.com/gzquse/cudaq-perlmutter}. The numbers quoted here (34 qubits on four A100 GPUs in about one minute, 42 qubits on up to 1,024 GPUs) are those reported in \cite{guo2025qgear}.
+
+\section{Environment Setup on NERSC Perlmutter}\label{sec:appqgear:setup}
+
+\qgear{} is distributed as an nbdev-based Python package and is installed into a conda environment placed on the Perlmutter scratch file system, where the many small files of a Python environment are served efficiently. Listing~\ref{lst:appqgear:setup} shows the interactive setup; \texttt{<location>} and \texttt{<username>} are the first letter of the user name and the user name, following the NERSC \texttt{/pscratch} convention, and \texttt{\$SCRATCH} resolves to the same directory.
+
+\begin{lstlisting}[language=bash,caption={Interactive environment setup on a Perlmutter login node.},label={lst:appqgear:setup}]
+module load conda
+conda create --prefix=/pscratch/sd/<location>/<username>/qgear -y python=3.11 pip
+conda activate $SCRATCH/qgear
+pip install -U qgear ipykernel
+python -m ipykernel install --user --name qgear --display-name qgear
+\end{lstlisting}
+
+The last line registers the environment as a Jupyter kernel. After logging in at \url{https://jupyter.nersc.gov} and selecting a GPU node, the kernel named \texttt{qgear} appears in the kernel list and the notebook \texttt{examples.ipynb} in the repository walks through the random-circuit, QFT and \qcrank{} image-encoding examples used in the benchmarks of \cref{ch:qgear}. The same environment is used from batch jobs by activating it inside the job script or by baking it into a container image (\cref{sec:appqgear:slurm}).
+
+\section{HDF5 Tensor Layout}\label{sec:appqgear:hdf5}
+
+The transformer does not serialize \qiskit{} objects. It flattens a list of circuits into three fixed-shape NumPy tensors and a JSON metadata string, and writes them to a single HDF5 file that can be read on any node without importing \qiskit{}. \Cref{tab:appqgear:hdf5} gives the datasets. Circuits shorter than \texttt{nGate} gates are padded with a no-operation gate identifier so that a whole batch is a rectangular tensor, which is what allows thousands of circuits to be dispatched to GPUs with a single read.
+
+\begin{table}[htbp]
+\caption{Datasets of the \qgear{} HDF5 circuit file. \texttt{nCirc} is the number of circuits in the batch and \texttt{nGate} the padded gate count. Field order within the last axis is that of the version used in \cref{ch:qgear}.}
+\label{tab:appqgear:hdf5}
+\centering
+\begingroup\singlespacing\footnotesize
+\begin{tabular}{@{}lll>{\raggedright\arraybackslash}p{6.2cm}@{}}
+\toprule
+Dataset & Shape & Type & Content \\
+\midrule
+\texttt{circ\_type} & (\texttt{nCirc}, 2) & \texttt{int32} & per-circuit header: number of qubits, number of gates \\
+\texttt{gate\_type} & (\texttt{nCirc}, \texttt{nGate}, 3) & \texttt{int32} & per-gate: gate identifier, target qubit, control qubit ($-1$ if none) \\
+\texttt{gate\_param} & (\texttt{nCirc}, \texttt{nGate}, 3) & \texttt{float32} & per-gate rotation parameters $(\theta,\phi,\lambda)$; zero for parameter-free gates \\
+\texttt{meta.JSON} & scalar string & --- & gate-identifier dictionary, shot count, provenance and timestamps \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}
+
+The gate-identifier dictionary in \texttt{meta.JSON} maps the integer codes in \texttt{gate\_type} to the gate names of \cref{tab:appqgear:gates}, so that a file remains self-describing if the supported gate set is extended.\todo{confirm the field order of gate\_type and gate\_param and the padding convention against the qgear documentation}
+
+\section{Minimal Python Usage}\label{sec:appqgear:python}
+
+Listing~\ref{lst:appqgear:python} shows the complete round trip: build \qiskit{} circuits, transform them to the gate-list tensors, write and read the HDF5 file, execute on a \cudaq{} target and convert the results to \qiskit{}-style count dictionaries. On a login node the \texttt{qpp-cpu} target can be substituted for \texttt{nvidia} to test the pipeline without a GPU.
+
+\begin{lstlisting}[language=Python,caption={End-to-end use of the \qgear{} API on a single GPU node.},label={lst:appqgear:python}]
+from qiskit import QuantumCircuit
+from qgear.runner import qiskit_to_gateList, run_cudaq, counts_cudaq_to_qiskit
+from qgear.toolbox.Util_H5io4 import write4_data_hdf5, read4_data_hdf5
+
+# 1. Build (or load) a list of Qiskit circuits using the supported gate set
+circs = []
+for i in range(4):
+    qc = QuantumCircuit(3)
+    qc.h(0); qc.cx(0, 1); qc.ry(0.3 * (i + 1), 2)
+    qc.cp(0.5, 1, 2); qc.swap(0, 2)
+    qc.measure_all()
+    circs.append(qc)
+
+# 2. Flatten to the (circ_type, gate_type, gate_param) tensors
+gate_lists, meta = qiskit_to_gateList(circs)
+
+# 3. Persist for the HPC job (the file is Qiskit-independent)
+write4_data_hdf5(gate_lists, "circuits.h5", metaD=meta)
+
+# 4. On the GPU node: read back and execute with CUDA-Q
+big_data, meta = read4_data_hdf5("circuits.h5")
+results = run_cudaq(big_data, meta, shots=10_000, target="nvidia")
+
+# 5. Convert CUDA-Q sample results to Qiskit-style counts
+counts = [counts_cudaq_to_qiskit(r) for r in results]
+print(counts[0])
+\end{lstlisting}
+
+The function names follow the package as used for \cref{ch:qgear}; the HDF5 helpers live in the shared \texttt{toolbox} module inherited from the \qcrank{} encoder code of Balewski et al.~\cite{balewski2024qcrank}.\todo{confirm import paths and argument names against the released qgear API}
+
+\section{Multi-Node Slurm Batch Script}\label{sec:appqgear:slurm}
+
+Large runs use the \cudaq{} multi-GPU state-vector back end, which distributes the $2^n$ amplitudes across GPUs and nodes with MPI, so that a 34-qubit simulation ran on four A100 GPUs in about a minute and larger states scale to hundreds of nodes~\cite{guo2025qgear}. The container stack is either Podman-HPC or Shifter~\cite{stephey2022podman}, with the \cudaq{} image extended by the \qgear{} package. Listing~\ref{lst:appqgear:slurm} is the skeleton used for the 1,024-GPU runs; the account, image and paths are placeholders.
+
+\begin{lstlisting}[language=bash,caption={Slurm skeleton for a multi-node \cudaq{} job on Perlmutter (256 nodes, 4 A100 GPUs each).},label={lst:appqgear:slurm}]
+#!/bin/bash
+#SBATCH -N 256                    # nodes: 256 x 4 A100 = 1,024 GPUs
+#SBATCH --gpus-per-node=4
+#SBATCH --ntasks-per-node=4       # one MPI rank per GPU
+#SBATCH -C gpu
+#SBATCH -q regular
+#SBATCH -A <account>
+#SBATCH -t 00:30:00
+#SBATCH -J qgear-mgpu
+#SBATCH -o slurm-%j.out
+
+IMG=<registry>/cudaq-qgear:latest       # CUDA-Q image with qgear installed
+INP=$SCRATCH/qgear/circuits.h5
+OUT=$SCRATCH/qgear/out_$SLURM_JOB_ID
+mkdir -p $OUT
+
+# Podman-HPC (preferred); the Shifter equivalent is
+#   shifter --image=$IMG --module=gpu,cuda-mpich python -m qgear.runner ...
+srun -N $SLURM_NNODES --ntasks-per-node=4 --gpus-per-task=1 \
+  podman-hpc run --rm --gpu --mpi -v $SCRATCH:$SCRATCH $IMG \
+  python -m qgear.runner --input $INP --out $OUT \
+         --target nvidia-mgpu --shots 10000
+\end{lstlisting}
+
+Two details matter for scaling. The number of MPI ranks must equal the number of GPUs, because each rank owns one device and one slice of the state vector; and the \texttt{nvidia-mgpu} target name of the \cudaq{} release used in \cref{ch:qgear} is spelled \texttt{--target nvidia --target-option mgpu} in later releases, so the launch line should be adjusted to the container's \cudaq{} version.
+
+The node count is set by memory rather than by speed. With single-precision complex amplitudes of 8 bytes, an $n$-qubit state occupies $2^{n+3}$ bytes, so a 40\,GB A100 holds a 32-qubit state, four GPUs hold 34 qubits, and 42 qubits require $2^{45}$ bytes, or 32\,TB, which is why the largest runs of \cref{ch:qgear} used 1,024 GPUs (256 nodes); the rule of thumb is $G \geq 2^{\,n-32}$ GPUs for $n>32$ qubits. Requesting more nodes than the memory rule demands does not shorten a run appreciably, because the all-to-all amplitude exchange after each gate acting on a globally distributed qubit grows with the number of ranks, and it consumes allocation hours in proportion to the node count. For validation, the count distributions returned by \cudaq{} for circuits of up to about 30 qubits can be compared directly with those of \qiskit{} Aer on the same circuits, which is the procedure used to check the transformer before the larger runs were made.
+
+\section{Gate Mapping from Qiskit to CUDA-Q}\label{sec:appqgear:gates}
+
+\Cref{tab:appqgear:gates} lists the gate set that the transformer accepts and the \cudaq{} kernel operation each gate becomes. Circuits containing other gates must first be transpiled to this basis with \qiskit{}'s \texttt{transpile(qc, basis\_gates=[...])}; since the set includes \texttt{u3} and \texttt{cx} it is universal, and \texttt{cp} and \texttt{swap} are kept as native operations because they appear in the QFT and \qcrank{} benchmarks and would otherwise expand into several two-qubit gates. Measurement is applied to all qubits at the end of the circuit; mid-circuit measurement and classical control are outside the supported set.
+
+\begin{table}[htbp]
+\caption{Gate set supported by the \qgear{} transformer and its \cudaq{} realization. $c$ and $t$ denote control and target qubits.}
+\label{tab:appqgear:gates}
+\centering
+\begingroup\singlespacing\footnotesize
+\begin{tabular}{@{}llll@{}}
+\toprule
+\qiskit{} gate & \cudaq{} kernel operation & Parameters & Note \\
+\midrule
+\texttt{h} & \texttt{h(q)} & --- & Hadamard \\
+\texttt{ry} & \texttt{ry(theta, q)} & $\theta$ & \\
+\texttt{rz} & \texttt{rz(theta, q)} & $\theta$ & \\
+\texttt{u3} & \texttt{u3(theta, phi, lam, q)} & $\theta,\phi,\lambda$ & or \texttt{rz--ry--rz} decomposition \\
+\texttt{cx} & \texttt{x.ctrl(c, t)} & --- & CNOT \\
+\texttt{cp} & \texttt{r1.ctrl(theta, c, t)} & $\theta$ & controlled phase \\
+\texttt{swap} & \texttt{swap(a, b)} & --- & \\
+\texttt{measure} & \texttt{mz(q)} & --- & all qubits, end of circuit \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}

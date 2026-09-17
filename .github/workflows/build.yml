@@ -1,0 +1,28 @@
+name: build
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  thesis:
+    runs-on: ubuntu-latest
+    container: texlive/texlive:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build dissertation
+        run: cd thesis && latexmk -pdf -interaction=nonstopmode main.tex
+      - name: Fail on undefined references or citations
+        run: |
+          ! grep -E "Warning: (Citation|Reference) .* undefined" thesis/main.log
+      - uses: actions/upload-artifact@v4
+        with: { name: dissertation-pdf, path: thesis/main.pdf }
+  slides:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install playwright && python -m playwright install --with-deps chromium
+      - name: Walk every slide, fail on console errors
+        run: python scripts/slides_check.py slides/index.html
+      - name: Export PDF handout
+        run: python scripts/slides_to_pdf.py slides/index.html slides/defense-slides.pdf
+      - uses: actions/upload-artifact@v4
+        with: { name: defense-slides-pdf, path: slides/defense-slides.pdf }

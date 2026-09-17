@@ -1,1 +1,352 @@
-% stub
+\chapter{Toward a Post-Quantum-Secure Quantum Stack}\label{ch:pqc}
+
+\authorshipstatement{This chapter is based on the software release \emph{Light Rider Inc.\ QPC SDK}, version 1.0.0 (Zenodo, August 2026, DOI 10.5281/zenodo.21895102)~\cite{guo2026lightriderqpc}, of which the candidate is the sole listed creator, and on the threat model of the error-correction randomness audit~\cite{guo2026qecaudit} (arXiv:2608.26600) coauthored with A.~Lawrence and R.~Wang (Lightrider), R.~Kuang (Quantropi) and Z.~Pan (TTU). The candidate designed and implemented the SDK and wrote the requirements analysis and the integration design presented here; the industry coauthors contributed requirements from the cloud fault model, and Z.~Pan supervised the work. The requirements analysis, the trust-chain design and the migration analysis have not been published elsewhere.}
+
+This chapter addresses the second half of RQ5 (Trust). \Cref{ch:qec} showed that error-corrected computation on a shared cloud processor can be \emph{audited} only if the randomness that reseeds the encoder is unpredictable to a co-located adversary. That observation reaches beyond error correction: the quantum cloud is itself a classical distributed system, and every classical channel of that system---job submission, calibration distribution, result return and the generation of seeds---rests on cryptography that a sufficiently large quantum computer would break. A quantum stack that is meant to be trusted in the coming decade must therefore be protected against the very machine it is building. This is a \emph{design and integration} chapter rather than an experimental one. Its published evidence is the NIST standards~\cite{nist2024fips203,nist2024fips204,nist2024fips205,nist2019fips1403,nist2015sp80090a}, the released QPC SDK~\cite{guo2026lightriderqpc}, the audit of \cref{ch:qec}~\cite{guo2026qecaudit} and the candidate's standardization-timeline tracker~\cite{guo2026nisttracker}. Throughout, we separate what \emph{exists}---a software release designed to the FIPS 140-3 requirements and a set of final standards---from what is \emph{proposed}: a requirements analysis for the stack of \cref{ch:qgear,ch:nisq,ch:qml,ch:synthesis,ch:qec}, an end-to-end trust chain for audited QEC jobs, and a migration plan.
+
+\section{Why a Quantum-Computing Stack Needs Post-Quantum Cryptography}\label{sec:pqc:why}
+
+The cryptographic background of \cref{sec:bg:crypto} recalls that Shor's algorithm~\cite{shor1997factoring} solves factoring and discrete logarithms in polynomial time, defeating RSA, finite-field Diffie--Hellman and elliptic-curve cryptography, while Grover's algorithm~\cite{grover1996search} halves the effective key length of symmetric primitives. What turns this textbook fact into an engineering deadline is the trajectory of resource estimates. Gidney and Eker{\aa}~\cite{gidney2021rsa} estimated that RSA-2048 could be factored in about eight hours with twenty million noisy physical qubits under surface-code error correction at a $10^{-3}$ gate error rate; a 2025 revision by Gidney~\cite{gidney2025million} lowers the requirement below one million physical qubits. The estimates fall because the improvements are algorithmic and architectural rather than a matter of larger devices, and they are exactly the kind of fault-tolerant resource accounting that \cref{ch:synthesis} argued must be taken seriously.
+
+Two properties of the threat make waiting untenable. The first is \emph{harvest-now-decrypt-later}: ciphertext recorded today under a quantum-vulnerable key exchange can be decrypted whenever a cryptographically relevant quantum computer exists, so data whose confidentiality must outlive that date are already at risk. Mosca~\cite{mosca2018ready} phrases this as an inequality: if data must stay secret for $x$ years, migration takes $y$ years and a cryptographically relevant machine is $z$ years away, the migration is late whenever $x+y>z$; for scientific and industrial data with a decade-long shelf life, essentially any plausible $z$ satisfies it. The second property is that authentication fails \emph{immediately} rather than retroactively: once discrete logarithms are cheap, every unexpired ECDSA key can be forged, so firmware images, calibration files and job results lose their integrity guarantee at the same moment. Post-quantum cryptography (PQC)~\cite{bernstein2017pqc} replaces the vulnerable public-key primitives with problems---module lattices and hash functions in the NIST selections~\cite{nist2022ir8413}---for which no efficient quantum algorithm is known.
+
+The symmetric side is simpler. Grover's quadratic speed-up is far less damaging than Shor's, because Grover iterations cannot be parallelized without losing the advantage and each must evaluate the cipher coherently; the conservative response adopted by NIST and by the CNSA~2.0 profile~\cite{nsa2022cnsa2} is to move to 256-bit keys and 256-bit hash outputs. This is why the module described below carries AES-256-GCM and SHA3-256 and instantiates its DRBGs at a 256-bit security strength, and why the migration effort concentrates on the public-key layer.
+
+Why should a dissertation about quantum \emph{computing} care? Because a cloud QPU is not accessed through a quantum channel. The user's circuit is compiled on a workstation or on an HPC system such as the one used in \cref{ch:qgear}, serialized, transmitted over TLS to a provider's front end, queued by a classical scheduler, translated by classical control electronics into pulses, and its measurement outcomes travel back the same way. The calibration data that \cref{ch:nisq} and \cref{ch:qml} used to place cuts and choose layers are classical files served over the same channels, and the seeds that reseed the encoders of \cref{ch:qec} are classical bit strings. \Cref{fig:pqc:stack} makes this explicit: every dashed arrow is a classical channel where a quantum-vulnerable primitive would have to be replaced. The quantum processor sits at the end of a long classical pipeline, and the trustworthiness of the whole is bounded by its weakest classical link.
+
+% alt: Block diagram of a cloud quantum-computing pipeline. On the left, three classical origin nodes (HPC simulation and training, algorithm and model development, and the QEC audit client) feed a job-submission API; the API connects to a scheduler and calibration store, then to QPU control electronics and finally to the quantum processor; results flow back through a results store to the users. Dashed arrows mark the classical channels that must carry post-quantum key establishment and signatures.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  node distance=8mm and 14mm,
+  box/.style={draw,rounded corners=2pt,align=center,minimum height=9mm,inner sep=3pt,text width=25mm},
+  cls/.style={box,fill=cbBlue!12},
+  cld/.style={box,fill=cbOrange!15},
+  qpu/.style={box,fill=cbGreen!15},
+  chan/.style={-{Latex[length=2mm]},thick,cbRed,dashed},
+  dchan/.style={{Latex[length=2mm]}-{Latex[length=2mm]},thick,cbRed,dashed},
+  plain/.style={-{Latex[length=2mm]},thick}]
+  % left column: classical origins
+  \node[cls] (hpc) {HPC simulation \& training\\ (\cref{ch:qgear,ch:synthesis})};
+  \node[cls,below=of hpc] (alg) {Algorithm \& model development\\ (\cref{ch:nisq,ch:qml})};
+  \node[cls,below=of alg] (aud) {QEC audit client\\ (\cref{ch:qec})};
+  % middle column: cloud control plane
+  \node[cld,right=of alg] (api) {Job-submission API};
+  \node[cld,above=of api] (cal) {Scheduler \& calibration store};
+  \node[cld,below=of api] (res) {Results store};
+  % right column
+  \node[qpu,right=of api] (ctl) {Control electronics\\ (pulse compiler)};
+  \node[qpu,right=of ctl,text width=14mm] (q) {QPU};
+  % channels
+  \draw[chan] (hpc.east) -- (api.north west) node[pos=0.5,above,sloped,font=\scriptsize]{artifacts};
+  \draw[dchan] (alg.east) -- (api.west) node[pos=0.5,above,font=\scriptsize]{jobs} node[pos=0.5,below,font=\scriptsize]{calibration};
+  \draw[chan] (aud.north east) -- (api.south west) node[pos=0.45,above,sloped,font=\scriptsize]{seeded jobs};
+  \draw[plain] (cal.south) -- (api.north);
+  \draw[plain] (api.east) -- (ctl.west);
+  \draw[plain] (ctl.east) -- (q.west);
+  \draw[plain] (q.south) |- (res.east) node[pos=0.72,above,font=\scriptsize]{counts, syndromes};
+  \draw[chan] (res.west) -- (aud.east) node[pos=0.5,below,sloped,font=\scriptsize]{results};
+  % background: classical distributed system
+  \begin{scope}[on background layer]
+    \node[draw,cbGray,dashed,rounded corners=4pt,fit=(hpc)(aud)(cal)(res)(ctl),inner sep=5pt,
+          label={[cbGray,font=\scriptsize]above:classical distributed system}] {};
+  \end{scope}
+  % legend
+  \node[below=10mm of res,anchor=north,align=left,font=\scriptsize] {
+    \tikz{\draw[chan] (0,0)--(0.6,0);} channel requiring PQC key establishment and signatures\quad
+    \tikz{\draw[plain] (0,0)--(0.6,0);} provider-internal path};
+\end{tikzpicture}
+\caption{A cloud quantum processor at the end of a classical pipeline. Every dashed channel carries data whose confidentiality, integrity or unpredictability the stack of \cref{ch:qgear,ch:nisq,ch:qml,ch:synthesis,ch:qec} depends on, and every one is protected today by quantum-vulnerable public-key cryptography. Schematic.}
+\label{fig:pqc:stack}
+\end{figure}
+
+A quantum cloud also widens the attack surface in ways a classical cloud does not: calibration data are a public interface that an adversary can read and, on an unauthenticated channel, alter; multi-tenancy is physical, so cross-talk becomes a cross-tenant channel, which is the co-location formalized by the fault model of \cref{ch:qec}; and jobs wait in classical queues for hours. Post-quantum cryptography cures none of this by itself, but authenticated calibration, signed jobs and attested results turn an opaque queue into a chain of verifiable records.
+
+\section{Requirements Analysis}\label{sec:pqc:requirements}
+
+We now enumerate what must be protected. The stack developed in this dissertation touches five kinds of classical artifacts, one per research chapter, each with a distinct security lifetime and adversary. \Cref{tab:pqc:assets} summarizes the analysis; the paragraphs below justify the entries.
+
+\begin{table}[htbp]
+\caption{Assets and threats across the layers of the quantum stack developed in this dissertation, with the security service each asset requires and the post-quantum primitive proposed to deliver it. Lifetimes are the periods over which the property must hold. Design analysis; the chapter references point to where each asset is produced or consumed.}
+\label{tab:pqc:assets}
+\centering
+\begingroup\singlespacing\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{tabular}{@{}L{2.05cm}L{2.95cm}L{1.75cm}L{2.85cm}L{2.05cm}L{2.35cm}@{}}
+\toprule
+Layer & Asset & Lifetime & Principal threat & Service & Primitive \\
+\midrule
+HPC simulation (\cref{ch:qgear}) & HDF5 circuit tensors, state-vector checkpoints, container images & months to years & tampered image or dataset (supply chain) & integrity, authenticity & ML-DSA signature; SHA-3 digest \\
+NISQ algorithms (\cref{ch:nisq}) & Job payloads: QUBO coefficients mapped to \deal{} angles; \qawa{} portfolio data & years (business data) & interception and later decryption of payloads & confidentiality in transit & hybrid ML-KEM + AES-256-GCM \\
+Calibration (\cref{ch:nisq,ch:qml}) & $T_1$, $T_2$, CZ-error maps used by \shardq{} and \deal{} layer selection & hours (freshness) & poisoned calibration causes mis-compiled cuts & authenticity, freshness & ML-DSA-signed, time-stamped snapshots \\
+Quantum learning (\cref{ch:qml}) & Encoded datasets (medical images), \qpie{}/\vqt{} parameters & years (privacy) & disclosure of training data & confidentiality at rest and in transit & AES-256-GCM; ML-KEM key wrap \\
+Synthesis (\cref{ch:synthesis}) & \rubriq{} fine-tuned weights, LoRA adapters, rubric evaluators & years (IP; reward integrity) & weight tampering; evaluator substitution & integrity, authenticity (long-lived) & SLH-DSA or ML-DSA-87; SHA-3 Merkle digest \\
+QEC audit (\cref{ch:qec}) & Encoder seeds, syndrome records, audit logs & per run (seed); years (log) & seed prediction; log forgery & unpredict\-ability; non-repudiation & SP~800-90A DRBG; ML-DSA \\
+Results (all) & Measurement counts, provider attestations & years (evidence) & result substitution or replay & authenticity, freshness & ML-DSA; nonce and commitment \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}
+
+\emph{Simulation artifacts on HPC.} The \qgear{} pipeline of \cref{ch:qgear} produces HDF5 tensors describing thousands of circuits at once and container images that fix the software stack (\cref{app:qgear}). These artifacts are shared across facilities and reused for months. Their confidentiality is rarely critical, but their integrity is: a tampered container that silently altered gate semantics would corrupt every downstream benchmark. The service required is authenticity over a long lifetime, which calls for a signature whose security does not erode as quantum hardware improves.
+
+\emph{Job payloads to cloud QPUs.} A \deal{} circuit (\cref{ch:nisq}) encodes the QUBO coefficients of the problem instance directly in its rotation angles, and a \qawa{} circuit encodes portfolio correlations. The payload \emph{is} the business data, transmitted to a third party, and its value persists for years, so the harvest-now-decrypt-later argument applies in full: key establishment for the submission channel must be post-quantum.
+
+\emph{Calibration data.} \shardq{} (\cref{ch:qml}) places gate cuts using physical-qubit distances and calibrated error rates, and \deal{} selects its layer count from the device noise profile. A calibration file that an adversary can alter is a compiler-level attack surface that can steer cuts onto the worst qubits or push layer counts beyond the coherence budget. Because calibration is refreshed hourly, the relevant service is authenticity with freshness rather than long-term confidentiality.
+
+\emph{Model weights and learned encodings.} The \qpie{} and \vqt{} models of \cref{ch:qml} were trained on medical images, and \rubriq{} (\cref{ch:synthesis}) holds roughly \SI{200}{\giga\byte} of fine-tuned weights whose integrity determines the correctness of every synthesized circuit. Both require confidentiality at rest and integrity over the model's lifetime, and the \rubriq{} reward pipeline additionally requires that the evaluator code executing inside the reinforcement-learning loop be exactly the code that was audited.
+
+\emph{QEC seeds and audit records.} \Cref{ch:qec} showed that reseeding the Hadamard-structured-ensemble (HSE) encoder per run reduces the mean accepted logical disturbance on the $\code{5}{1}{3}$ code from 0.150 to 0.020 when the fault is fixed before the seed is known~\cite{guo2026qecaudit}. The entire benefit evaporates if the adversary can predict the seed. The property required is unpredictability at a stated security strength, which is what an SP~800-90A deterministic random bit generator (DRBG)~\cite{nist2015sp80090a} fed from a validated entropy source~\cite{nist2018sp80090b} provides.
+
+The threats in \cref{tab:pqc:assets} presuppose three adversaries: a \emph{network adversary} who records traffic today and decrypts it once a cryptographically relevant quantum computer exists, defeated only by post-quantum key establishment; a \emph{co-located tenant} who can inject faults but cannot read the control plane, the adversary of \cref{ch:qec}, contained by reseeding from a source it cannot observe; and a \emph{compromised control plane} that can alter queued jobs, calibration files and results, which the user cannot prevent but can detect through signatures and attestations.
+
+From \cref{tab:pqc:assets} we distill five requirements for the cryptographic component of the stack.
+\begin{enumerate}
+\item[R1] \emph{Post-quantum key establishment} for every channel carrying job payloads or model data, in a hybrid construction so that security does not regress below the classical baseline during migration.
+\item[R2] \emph{Post-quantum signatures} on artifacts (images, calibration snapshots, results), with a hash-based option for artifacts whose lifetime is measured in decades.
+\item[R3] \emph{Approved randomness}: all seeds consumed by the audit of \cref{ch:qec} originate from an SP~800-90A DRBG inside a cryptographic module boundary.
+\item[R4] \emph{Assurance}: the implementation is structured as a cryptographic module in the sense of FIPS 140-3~\cite{nist2019fips1403}, with self-tests, defined roles and services, and zeroization.
+\item[R5] \emph{Crypto-agility}: applications can discover which module and algorithm suite is available and switch suites without code changes, because the standards are still evolving (\cref{sec:pqc:timeline}).
+\end{enumerate}
+
+\section{The QPC SDK Architecture}\label{sec:pqc:sdk}
+
+The Light Rider Inc.\ QPC SDK~\cite{guo2026lightriderqpc} is the candidate's response to R1--R5. It was released on Zenodo in August 2026 as version 1.0.0 for Linux x86\_64 and is described in its record as a ``post-quantum cryptography FIPS 140-3 module with module search capability.'' We describe it at the level of abstraction that FIPS 140-3~\cite{nist2019fips1403}, which adopts ISO/IEC 19790:2012 as its technical basis, uses for any cryptographic module---boundary, approved algorithms, self-tests, sensitive-security-parameter management, roles and services---and then describe the module search capability that distinguishes it. The SDK is a software module designed to the requirements applicable to software executing on a general-purpose operating system; implementation statements that go beyond the public release are marked for confirmation against the SDK documentation. \Cref{fig:pqc:sdk} shows the architecture.
+
+% alt: Architecture diagram of the QPC SDK. A large dashed rectangle labelled cryptographic module boundary contains an API layer with roles and services, a row of algorithm blocks (ML-KEM, ML-DSA, SLH-DSA, AES-256-GCM, SHA-3 and SHAKE, HMAC, and DRBG), a self-test controller, a sensitive-security-parameter manager with zeroization, and a status indicator. Outside the boundary are the calling application, the module registry used for module search, the operating-system entropy source and the cloud QPU provider, connected by arrows.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  blk/.style={draw,rounded corners=2pt,align=center,inner sep=3pt,minimum height=7mm},
+  alg/.style={blk,fill=cbBlue!12,text width=12.5mm,minimum height=9mm,font=\scriptsize},
+  ctl/.style={blk,fill=cbOrange!15},
+  ext/.style={blk,fill=cbGray!12,text width=22mm},
+  arr/.style={-{Latex[length=2mm]},thick},
+  darr/.style={{Latex[length=2mm]}-{Latex[length=2mm]},thick}]
+  % API layer (inside the boundary)
+  \node[ctl,text width=100mm] (api) at (0,0) {API layer: roles (Crypto Officer, User) and services (key generation, encapsulate/decapsulate, sign/verify, random bits, show status, zeroize, module search)};
+  % algorithm row
+  \node[alg] (kem) at (-47mm,-19mm) {ML-KEM\\ 768 / 1024};
+  \node[alg,right=1.4mm of kem] (dsa) {ML-DSA\\ 65 / 87};
+  \node[alg,right=1.4mm of dsa] (slh) {SLH-DSA\\ SHA2 / SHAKE};
+  \node[alg,right=1.4mm of slh] (aes) {AES-256\\ GCM};
+  \node[alg,right=1.4mm of aes] (sha) {SHA-3 /\\ SHAKE};
+  \node[alg,right=1.4mm of sha] (hmac) {HMAC\\ SHA-2 / SHA-3};
+  \node[alg,right=1.4mm of hmac,fill=cbGreen!18] (drbg) {DRBG\\ HMAC / CTR};
+  % lower controllers
+  \node[ctl,text width=34mm] (st) at (-34mm,-36mm) {Self-test controller\\ (integrity, KAT, PCT)};
+  \node[ctl,text width=36mm] (ssp) at (3mm,-36mm) {SSP manager\\ (key store, zeroization)};
+  \node[ctl,text width=26mm] (ind) at (38mm,-36mm) {Status indicator\\ (approved mode)};
+  % boundary
+  \begin{scope}[on background layer]
+    \node[draw,cbRed,dashed,thick,rounded corners=4pt,fit=(api)(kem)(drbg)(st)(ssp)(ind),inner sep=5pt,
+          label={[cbRed,font=\scriptsize]below:cryptographic module boundary (FIPS 140-3, software module)}] (bd) {};
+  \end{scope}
+  % externals (outside the boundary)
+  \node[ext] (app) at (-40mm,27mm) {Calling application\\ (audit client, job submitter)};
+  \node[ext] (reg) at (0,27mm) {Module registry\\ (search / negotiation)};
+  \node[ext] (ent) at (40mm,27mm) {OS entropy source\\ (SP 800-90B)};
+  \node[ext,text width=16mm] (cloud) at (-79mm,27mm) {Cloud QPU\\ provider};
+  % arrows: externals to service interface
+  \draw[darr] (app.south) -- (app.south|-api.north) node[midway,right,font=\scriptsize]{service calls};
+  \draw[darr] (reg.south) -- (reg.south|-api.north) node[midway,right,font=\scriptsize]{query / attest};
+  \draw[arr] (ent.south) -- (ent.south|-api.north) node[midway,right,font=\scriptsize]{entropy input};
+  % arrows: service interface to algorithms and controllers
+  \foreach \n in {kem,dsa,slh,aes,sha,hmac,drbg}{\draw[arr] (api.south -| \n) -- (\n.north);}
+  \draw[arr] (st.north) -- (st.north|-api.south);
+  \draw[arr] (ssp.north) -- (ssp.north|-api.south);
+  % application <-> cloud provider channel (outside the boundary)
+  \draw[darr] (app.west) -- (cloud.east) node[midway,below,font=\scriptsize,align=center]{hybrid KEM,\\ AES-GCM,\\ ML-DSA};
+\end{tikzpicture}
+\caption{Architecture of the QPC SDK described as a FIPS 140-3 cryptographic module. The dashed boundary encloses the approved algorithms, the self-test controller, the sensitive-security-parameter (SSP) manager and the service interface; the module registry, the entropy source and the cloud provider are outside the boundary. Schematic of the design; implementation details are to be confirmed against the SDK documentation.}
+\label{fig:pqc:sdk}
+\end{figure}
+
+\subsection{Module Boundary, Roles and Services}\label{sec:pqc:boundary}
+
+The module boundary encloses the algorithm implementations, the self-test logic, the SSP manager and the service interface; it excludes the calling application, the operating system's entropy source and the registry. FIPS 140-3 requires at least a Crypto Officer role and permits a User role; the SDK exposes both, the former for instantiating the module, running on-demand self-tests and zeroizing, the latter for the cryptographic services proper. Every service must indicate whether it executed in the approved mode, which the SDK implements through a status indicator returned with each call. The service list mirrors \cref{sec:pqc:requirements}: key-pair generation and encapsulation/decapsulation (R1), signature generation and verification (R2), random-bit generation (R3), show-status and self-test (R4), and module search (R5).
+
+\subsection{Approved Algorithms}\label{sec:pqc:algorithms}
+
+The approved algorithm set is drawn from the three August 2024 standards and the symmetric primitives they rely on; \cref{tab:pqc:algorithms} lists the parameter sets and their public sizes. ML-KEM~\cite{nist2024fips203} is the lattice-based key-encapsulation mechanism formerly known as CRYSTALS-Kyber, ML-DSA~\cite{nist2024fips204} the lattice-based signature formerly known as CRYSTALS-Dilithium, and SLH-DSA~\cite{nist2024fips205} the stateless hash-based signature formerly known as SPHINCS\textsuperscript{+}. NIST's security categories relate each parameter set to a classical reference: categories 1, 3 and 5 correspond to key search on AES-128, AES-192 and AES-256, and categories 2 and 4 to collision search on SHA-256 and SHA-384~\cite{nist2022ir8413}. The SDK defaults to category-3 parameters (ML-KEM-768, ML-DSA-65) and offers category 5 for the longest-lived artifacts; SLH-DSA is included because its security rests only on the hash function, making it the conservative choice for signing container images and model weights that must remain verifiable for a decade, at the price of signatures roughly two orders of magnitude larger than classical ones.
+
+\begin{table}[htbp]
+\caption{Approved algorithms of the QPC SDK with NIST security categories and public parameter sizes in bytes. For the KEM the columns give the encapsulation key, the decapsulation key and the ciphertext; for the signatures they give the public key, the private key and the signature. Sizes are those tabulated in the cited FIPS documents.}
+\label{tab:pqc:algorithms}
+\centering
+\begingroup\singlespacing\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\begin{tabular}{@{}L{1.5cm}L{3.2cm}L{2.6cm}crrr@{}}
+\toprule
+Function & Parameter set & Standard & Category & Public (B) & Private (B) & CT / sig.\ (B) \\
+\midrule
+KEM & ML-KEM-768 & FIPS 203~\cite{nist2024fips203} & 3 & 1184 & 2400 & 1088 \\
+KEM & ML-KEM-1024 & FIPS 203~\cite{nist2024fips203} & 5 & 1568 & 3168 & 1568 \\
+Signature & ML-DSA-65 & FIPS 204~\cite{nist2024fips204} & 3 & 1952 & 4032 & 3309 \\
+Signature & ML-DSA-87 & FIPS 204~\cite{nist2024fips204} & 5 & 2592 & 4896 & 4627 \\
+Signature & SLH-DSA-SHA2-128s & FIPS 205~\cite{nist2024fips205} & 1 & 32 & 64 & 7856 \\
+Signature & SLH-DSA-SHA2-256s & FIPS 205~\cite{nist2024fips205} & 5 & 64 & 128 & 29792 \\
+Hash / XOF & SHA3-256, SHA3-512, SHAKE128, SHAKE256 & FIPS 202~\cite{nist2015fips202} & --- & --- & --- & --- \\
+AEAD & AES-256-GCM & FIPS 197~\cite{nist2001fips197}; SP 800-38D~\cite{nist2007sp80038d} & 256-bit & --- & 32 & --- \\
+DRBG & HMAC\_DRBG; CTR\_DRBG (AES-256) & SP 800-90A~\cite{nist2015sp80090a} & 256-bit & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\endgroup
+\end{table}
+
+Two remarks on the table are due. First, the sizes matter operationally: a hybrid handshake carrying an ML-KEM-768 encapsulation key and ciphertext adds roughly \SI{2.3}{\kilo\byte} to a connection, and an ML-DSA-65 signature is about fifty times larger than an ECDSA-P256 signature. For job submission this is negligible against payload sizes, but for signing calibration snapshots at hourly cadence it argues for ML-DSA rather than SLH-DSA. Second, the DRBGs are the only components whose output feeds a \emph{quantum} operation directly, since the encoder seeds of \cref{ch:qec} are DRBG output; they are instantiated at the 256-bit strength with prediction resistance available.
+
+Carrying both lattice-based and hash-based signatures is a deliberate hedge. ML-KEM and ML-DSA rest on the same module-lattice assumptions, so a structural advance would affect both at once, whereas SLH-DSA depends only on the preimage and collision resistance of its hash function. NIST's selection of HQC as a code-based backup KEM~\cite{nist2025ir8545} reflects the same reasoning, and module search (\cref{sec:pqc:search}) is how the SDK can add HQC once its standard is final without changing applications. Computationally the lattice schemes are cheap---ML-KEM-768 runs in software at speeds comparable to elliptic-curve Diffie--Hellman---so the price of migration is bandwidth and storage; SLH-DSA signing is the exception, slow enough that it suits the infrequent signing of images and checkpoints but not per-message use.
+
+\subsection{Self-Tests, Key Management and Zeroization}\label{sec:pqc:selftests}
+
+FIPS 140-3 distinguishes pre-operational self-tests, which must pass before the module provides any service, from conditional self-tests, which run when a particular condition arises. The SDK performs a software-integrity test over its own code image at load time and runs known-answer tests (KATs) for each approved algorithm before that algorithm's first use, comparing outputs against vectors from the standards. The conditional tests are pair-wise consistency tests (PCTs) executed whenever a key pair is generated: a fresh ML-DSA or SLH-DSA key signs and verifies a test message, and a fresh ML-KEM key encapsulates, decapsulates and checks that the two shared secrets agree. A failed self-test places the module in an error state in which all cryptographic output is inhibited and only show-status and zeroize remain available. Sensitive security parameters---private keys, DRBG state, shared secrets and intermediate values---are held in memory owned by the SSP manager and zeroized on release, on error and on request; public security parameters are protected against modification but not disclosure. The entropy input to the DRBGs is drawn from the operating system's noise source, which FIPS 140-3 treats as a passive entropy source outside the boundary to be documented against SP~800-90B~\cite{nist2018sp80090b}.
+
+FIPS 140-3 also covers non-invasive attacks, and the post-quantum schemes have specific side-channel profiles. ML-KEM decapsulation uses implicit rejection---an invalid ciphertext yields a pseudorandom secret rather than an error---and the comparison that selects between the two paths must be constant-time, or a timing difference would enable a chosen-ciphertext attack on the decapsulation key; ML-DSA signing contains rejection-sampling loops whose rejected candidates must never be exposed. The SDK is written so that operations on critical security parameters are free of secret-dependent branches and table look-ups, and its known-answer tests exercise the implicit-rejection path so that a regression is caught before the module enters the operational state.\todo{confirm with SDK docs: self-test schedule, entropy-source claim and the Security Level targeted for the software module}
+
+\subsection{Module Search Capability}\label{sec:pqc:search}
+
+What distinguishes the SDK from a plain algorithm library is the \emph{module search capability} of its release description. In a heterogeneous facility an application may have several cryptographic modules available: the SDK as a software module, an operating-system module, or a hardware security module attached to the HPC login nodes, each supporting a different subset of \cref{tab:pqc:algorithms} at different security levels and with different validation status. Module search is designed as a registry-and-discovery service in which each module publishes a signed descriptor listing its identity, its approved algorithm suites, its security level and its validation metadata. An application submits a requirement profile---for example ``KEM at category 3 or higher, signature at category 3, DRBG at 256-bit strength''---receives a ranked list of matching modules, and negotiates a concrete suite with the one it selects. Two design decisions matter for security: descriptors are signed with ML-DSA so that a network adversary cannot advertise a weaker module and induce a downgrade, and negotiation is constrained by a policy floor set by the Crypto Officer so that no suite can fall below the requirements of \cref{sec:pqc:requirements}. Module search thus implements R5: crypto-agility becomes a configuration property rather than a code change, which is what makes the migration plan of \cref{sec:pqc:timeline} operational.\todo{confirm with SDK docs: registry transport, descriptor format and the ranking policy of the module search API}
+
+\section{Integration with the QEC Audit}\label{sec:pqc:integration}
+
+The QEC audit of \cref{ch:qec} treated randomness as an input; the QPC SDK supplies it. This section defines how the two fit together.
+
+\subsection{Seeding the Encoder from an Approved DRBG}\label{sec:pqc:seed}
+
+In the audit, an HSE encoder of depth $d$ is a deterministic function $E_s$ of a seed $s$ that selects the Hadamard, phase, permutation and CNOT layers~\cite{guo2026qecaudit}. The security argument requires that the adversary who chooses the fault does not know $s$; in the bounded cloud fault model the mean accepted logical disturbance falls from 0.150 to 0.020, an $86.7\%$ reduction attributable to syndrome-based rejection, precisely because the fault is committed before the encoder is known~\cite{guo2026qecaudit}. If $s$ were derived from a predictable source---a wall-clock time, a job identifier, a default pseudo-random generator seeded with a small integer---an adversary who reproduces the derivation is back in the fixed-encoder setting. Requirement R3 therefore states that every $s$ is a fresh output of the SDK's DRBG:
+\begin{equation}\label{eq:pqc:seed}
+s \leftarrow \mathrm{Generate}\bigl(\mathrm{state},\ 256,\ \mathrm{SHA3\text{-}256}(\mathrm{job\_id} \,\|\, \mathrm{device\_id})\bigr),
+\end{equation}
+where the arguments are the DRBG state, the requested number of bits and the SP~800-90A \emph{additional input}, which binds the seed to the job and the device without contributing to its unpredictability; a reseed of the DRBG from the entropy source is triggered by the SP~800-90A reseed counter or on demand before a batch of audit runs. It is important to distinguish \emph{reseeding the encoder} (drawing a fresh $s$ per run, the mechanism studied in \cref{ch:qec}) from \emph{reseeding the DRBG} (refreshing its internal state from entropy, the mechanism of SP~800-90A~\cite{nist2015sp80090a}); the first is a Generate call, the second a Reseed call, and both are required.
+
+Until the job has executed, $s$ is a critical security parameter held by the SSP manager and stored at rest only under AES-256-GCM; after it is revealed it becomes evidence from which any third party can reconstruct $E_s$ and recompute the audit statistic. For a batch of $N$ runs the design draws $N$ seeds by separate Generate calls whose additional input includes the run index, so that one run can be revealed and audited without exposing the others.
+
+\subsection{An End-to-End Trust Chain}\label{sec:pqc:trustchain}
+
+Randomness is only the first link. For a verifier to conclude that an accepted-logical-disturbance estimate refers to the job that actually ran on the device, every link from DRBG to result must be authenticated. \Cref{fig:pqc:trustchain} defines the trust chain as nine steps between four parties: the QPC module, the audit client that owns the logical computation and performs the audit, the cloud provider's front end and the QPU.
+
+% alt: Sequence diagram with four vertical lifelines labelled QPC module, audit client, cloud provider and QPU. Numbered horizontal arrows show the audit client requesting self-tests and a seed from the module, building the encoder and a commitment, having the job signed, establishing a hybrid key and sending the encrypted job to the provider, the provider running the job on the QPU and returning results with an attestation, the client verifying the attestation through the module, and finally revealing the seed and computing the audit statistic.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\footnotesize,
+  life/.style={draw,rounded corners=2pt,fill=cbBlue!12,align=center,minimum width=24mm,minimum height=8mm},
+  msg/.style={-{Latex[length=2mm]},thick},
+  self/.style={-{Latex[length=2mm]},thick,rounded corners=2pt},
+  lbl/.style={font=\scriptsize,align=center,fill=white,inner sep=1pt}]
+  \def\yTop{0}
+  \node[life] (M) at (0,\yTop) {QPC module};
+  \node[life] (C) at (42mm,\yTop) {Audit client};
+  \node[life] (P) at (84mm,\yTop) {Cloud provider};
+  \node[life] (Q) at (122mm,\yTop) {QPU};
+  \foreach \n in {M,C,P,Q}{\draw[cbGray,dashed] (\n.south) -- ++(0,-96mm);}
+  % 1 self-tests + DRBG instantiate
+  \draw[msg] (C.south|-0,-8mm) -- (M.south|-0,-8mm) node[lbl,midway,above]{1. self-tests; instantiate DRBG};
+  % 2 seed
+  \draw[msg] (M.south|-0,-16mm) -- (C.south|-0,-16mm) node[lbl,midway,above]{2. $s \leftarrow$ Generate(256 bits)};
+  % 3 self: build encoder + commitment
+  \draw[self] (C.south|-0,-22mm) -- ++(10mm,0) -- ++(0,-6mm) -- ++(-10mm,0);
+  \node[lbl,anchor=west] at (53mm,-25mm) {3. $E_s=\mathrm{HSE}(s,d)$; $J=E_s\circ$ logical circuit;\\ $c=\mathrm{SHA3}(s\,\|\,r)$};
+  % 4 sign
+  \draw[msg] (C.south|-0,-36mm) -- (M.south|-0,-36mm) node[lbl,midway,above]{4. $\sigma_C \leftarrow$ ML-DSA.Sign$(J\,\|\,c)$};
+  % 5 hybrid handshake + encrypted job
+  \draw[msg] (C.south|-0,-46mm) -- (P.south|-0,-46mm) node[lbl,midway,above]{5. hybrid X25519 + ML-KEM-768 $\Rightarrow K$;\\ AES-256-GCM$_K(J, c, \sigma_C)$};
+  % 6 execute
+  \draw[msg] (P.south|-0,-56mm) -- (Q.south|-0,-56mm) node[lbl,midway,above]{6. compile, execute $J$};
+  % 7 raw results
+  \draw[msg] (Q.south|-0,-64mm) -- (P.south|-0,-64mm) node[lbl,midway,above]{7. counts, syndromes $R$};
+  % 8 attested results
+  \draw[msg] (P.south|-0,-74mm) -- (C.south|-0,-74mm) node[lbl,midway,above]{8. $R$, calibration snapshot cal,\\ $\sigma_P \leftarrow$ ML-DSA.Sign$(H(J)\,\|\,R\,\|\,\mathrm{cal})$};
+  % 9 verify + reveal
+  \draw[msg] (C.south|-0,-84mm) -- (M.south|-0,-84mm) node[lbl,midway,above]{9a. Verify$(\sigma_P)$};
+  \draw[self] (C.south|-0,-88mm) -- ++(10mm,0) -- ++(0,-6mm) -- ++(-10mm,0);
+  \node[lbl,anchor=west] at (53mm,-91mm) {9b. reveal $(s,r)$; recompute $E_s$;\\ audit accepted logical disturbance};
+\end{tikzpicture}
+\caption{End-to-end trust chain for an audited error-correction job. The seed is generated inside the module boundary, bound to the job by a hash commitment, the job is signed and sent under a hybrid post-quantum key, and the provider's attested results are verified before the seed is revealed and the audit statistic of \cref{ch:qec} is computed. Design proposal; the cryptographic operations are those of \cref{tab:pqc:algorithms}.}
+\label{fig:pqc:trustchain}
+\end{figure}
+
+The client invokes the module's self-tests and instantiates a DRBG (step~1), draws a seed (step~2, \cref{eq:pqc:seed}), builds the encoder and the job, and forms a hash commitment $c=\mathrm{SHA3\text{-}256}(s\,\|\,r)$ with a random blinding value $r$ (step~3); the commitment travels with the job so that the seed is provably fixed before execution without being disclosed. The module signs the job and commitment with ML-DSA-65 (step~4), and the client establishes a hybrid key with the provider (step~5, \cref{sec:pqc:hybrid}) and sends the encrypted, authenticated job. The provider compiles and executes it (steps~6--7) and returns the results with the calibration snapshot in effect and its own ML-DSA signature over the hash of the job, the results and the calibration (step~8); this signature ties the results to the exact job submitted and to the device state at the time, which is the freshness property of \cref{tab:pqc:assets}. Finally the client verifies the provider's signature through the module (step~9a), reveals $s$ and $r$, and any verifier recomputes $E_s$ and evaluates the accepted logical disturbance on $R$ (step~9b). Every link is either a post-quantum primitive from \cref{tab:pqc:algorithms} or a hash, so the chain remains sound after a cryptographically relevant quantum computer exists. It does not, and cannot, prevent a co-located adversary who observes the compiled pulses from learning $E_s$ during execution; that residual threat is what the cloud fault model of \cref{ch:qec} bounds, and the chain's role is to ensure that the audit \emph{measures} it faithfully.
+
+\subsection{Hybrid Key Establishment for Job Submission}\label{sec:pqc:hybrid}
+
+During the transition, R1 asks for a construction at least as secure as the classical scheme it replaces and at least as secure as the post-quantum scheme, so that a flaw in either does not expose the channel. The standard approach, adopted in the IETF's hybrid key agreement for TLS~1.3~\cite{kwiatkowski2025hybridtls} and consistent with the concatenation KDF of SP~800-56C~\cite{nist2020sp80056c}, derives the session key from both shared secrets:
+\begin{equation}\label{eq:pqc:hybrid}
+K = \mathrm{KDF}\bigl(\mathrm{ss}_{\text{X25519}} \,\|\, \mathrm{ss}_{\text{ML-KEM-768}} \,\|\, \mathrm{transcript}\bigr),
+\end{equation}
+where $\mathrm{ss}_{\text{X25519}}$ is the elliptic-curve Diffie--Hellman secret, $\mathrm{ss}_{\text{ML-KEM-768}}$ the decapsulated ML-KEM secret, and the transcript hash binds the key to the handshake. The SDK exposes the ML-KEM half through its encapsulation service and the KDF through its SHA-3 service; the classical half may come from the same module or from another discovered through module search. Payloads are then protected with AES-256-GCM under $K$, and the provider's signing key is authenticated by a certificate chain whose leaf is ML-DSA-65. NSA's CNSA~2.0 advisory~\cite{nsa2022cnsa2} prefers ML-KEM-1024 and ML-DSA-87 for national-security systems; the SDK's category-5 parameter sets make that profile a configuration choice.
+
+\section{Migration Timeline and Crypto-Agility}\label{sec:pqc:timeline}
+
+Designing to standards that are still being finalized requires knowing where they are going. The candidate's tracker~\cite{guo2026nisttracker} monitors the NIST post-quantum standardization pages weekly and records changes; \cref{fig:pqc:timeline} plots the milestones it has accumulated against the transition deadlines NIST has proposed. The process opened with a workshop in April 2015 and a call for proposals in December 2016; 69 complete first-round candidates arrived by November 2017, narrowed to 26 in January 2019 and to seven finalists plus eight alternates in July 2020. The third-round report of July 2022~\cite{nist2022ir8413} selected CRYSTALS-Kyber, CRYSTALS-Dilithium, FALCON and SPHINCS\textsuperscript{+} and sent four KEMs to a fourth round. Drafts appeared in August 2023 and the final FIPS 203, 204 and 205 were published on 13 August 2024~\cite{nist2024fips203,nist2024fips204,nist2024fips205}. In March 2025 NIST selected HQC as a code-based backup KEM~\cite{nist2025ir8545}\todo{verify: HQC selection date and status of the FIPS 206 (FN-DSA) draft}, and the FALCON-based FN-DSA is expected as FIPS 206. On the deprecation side, the initial public draft of NIST IR 8547~\cite{nist2024ir8547}, released in November 2024, proposes that quantum-vulnerable algorithms at the 112-bit classical security level (RSA-2048, ECDSA and ECDH on P-256) be deprecated after 2030 and that all quantum-vulnerable public-key algorithms be disallowed after 2035\todo{verify: IR 8547 dates against the final version}.
+
+% alt: Horizontal timeline from 2015 to 2036. Milestones above the axis mark the NIST standardization process: the 2015 workshop, the 2016 call, the 2017 first round, the 2019 second round, the 2020 third round, the 2022 selections, the 2023 drafts, the August 2024 final FIPS 203, 204 and 205, the March 2025 HQC selection and the August 2026 QPC SDK release. Milestones below the axis mark the transition deadlines from the NIST IR 8547 draft: deprecation of 112-bit RSA and ECC after 2030 and disallowance of all quantum-vulnerable algorithms after 2035.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=6.6mm,y=1mm,font=\scriptsize,
+  tick/.style={draw,thick},
+  up/.style={anchor=south,align=center,inner sep=1pt},
+  dn/.style={anchor=north,align=center,inner sep=1pt},
+  ev/.style={circle,fill=cbBlue,inner sep=1.4pt},
+  dl/.style={circle,fill=cbRed,inner sep=1.4pt},
+  us/.style={diamond,fill=cbGreen,inner sep=1.6pt}]
+  % axis from 2015 to 2036 (x = year - 2015; a milestone in month m of year y sits at y - 2015 + m/12)
+  \draw[thick,-{Latex[length=2mm]}] (-0.3,0) -- (21.2,0);
+  \foreach \yr in {2015,2017,...,2035}{
+    \pgfmathsetmacro{\xx}{\yr-2015}
+    \draw[tick] (\xx,-1.2) -- (\xx,1.2);
+    \node[dn] at (\xx,-1.6) {\yr};
+  }
+  % standardization milestones (above the axis)
+  \node[ev] (a) at (0.3,0) {};   \draw (a) -- (0.3,6);    \node[up] at (0.3,6)   {Apr 2015\\ workshop};
+  \node[ev] (b) at (2.0,0) {};   \draw (b) -- (2.0,14);   \node[up] at (2.0,14)  {Dec 2016\\ call};
+  \node[ev] (c) at (2.9,0) {};   \draw (c) -- (2.9,22);   \node[up] at (2.9,22)  {Nov 2017\\ round 1 (69)};
+  \node[ev] (d) at (4.05,0) {};  \draw (d) -- (4.05,6);   \node[up] at (4.05,6)  {Jan 2019\\ round 2 (26)};
+  \node[ev] (e) at (5.6,0) {};   \draw (e) -- (5.6,14);   \node[up] at (5.6,14)  {Jul 2020\\ round 3 (7+8)};
+  \node[ev] (f) at (7.55,0) {};  \draw (f) -- (7.55,6);   \node[up] at (7.55,6)  {Jul 2022\\ selections};
+  \node[ev] (g) at (8.65,0) {};  \draw (g) -- (8.65,22);  \node[up] at (8.65,22) {Aug 2023\\ draft FIPS};
+  \node[ev] (h) at (9.65,0) {};  \draw (h) -- (9.65,14);  \node[up] at (9.65,14) {Aug 2024\\ FIPS 203--205};
+  \node[ev] (i) at (10.2,0) {};  \draw (i) -- (10.2,6);   \node[up] at (10.2,6)  {Mar 2025\\ HQC};
+  \node[us] (j) at (11.65,0) {}; \draw (j) -- (11.65,22); \node[up] at (11.65,22){Aug 2026\\ QPC SDK v1.0.0};
+  % transition deadlines (below the axis)
+  \node[dl] (k) at (9.9,0) {};   \draw (k) -- (9.9,-10);  \node[dn] at (9.9,-10) {Nov 2024\\ IR 8547 draft};
+  \node[dl] (l) at (15,0) {};    \draw (l) -- (15,-10);   \node[dn] at (15,-10)  {2030: deprecate\\ 112-bit RSA/ECC};
+  \node[dl] (m) at (20,0) {};    \draw (m) -- (20,-10);   \node[dn] at (20,-10)  {2035: disallow\\ quantum-vulnerable};
+  % legend
+  \node[anchor=north west,align=left] at (-0.3,-19) {\tikz\node[ev]{}; standardization milestone\quad \tikz\node[dl]{}; transition deadline (draft)\quad \tikz\node[us]{}; this dissertation};
+\end{tikzpicture}
+\caption{NIST post-quantum standardization milestones and proposed transition deadlines. Milestones above the axis are taken from the standardization tracker~\cite{guo2026nisttracker} and the status reports~\cite{nist2022ir8413,nist2025ir8545}; deadlines below the axis are those proposed in the initial public draft of NIST IR 8547~\cite{nist2024ir8547}. The QPC SDK release~\cite{guo2026lightriderqpc} is marked for reference.}
+\label{fig:pqc:timeline}
+\end{figure}
+
+Three lessons follow. First, the window between the final standards (2024) and the proposed deprecation of RSA-2048 (2030) is shorter than the lifetime of an HPC procurement or a QPU generation, so the migration must be under way now. Second, the standards are not finished---HQC and FN-DSA will add algorithms, further signature candidates are under evaluation, and IR 8547 is a draft---so code that hard-wires one algorithm will be rewritten more than once, whereas code that negotiates a suite through module search will be reconfigured. Third, the seeds and signatures of \cref{ch:qec} have different agility needs: a seed is consumed immediately, so the DRBG can be upgraded at any time, but a signature on a container image must verify for years, which is why \cref{tab:pqc:assets} assigns the most conservative scheme, SLH-DSA, to model weights and images.
+
+For a facility such as those used in this dissertation, the migration reduces to four steps: an inventory of every point in \cref{fig:pqc:stack} where a key is established, a signature verified or a random value drawn, with the lifetime of the data it protects; prioritization by lifetime following \cref{tab:pqc:assets}; a hybrid phase that runs \cref{eq:pqc:hybrid} alongside the classical exchange and adds post-quantum signatures next to the existing ones, with module search discovering which counterparts already support the new suite; and removal of the classical components as the deprecation date approaches, with the tracker~\cite{guo2026nisttracker} alerting the facility when NIST changes the schedule.
+
+\section{Discussion}\label{sec:pqc:discussion}
+
+We close by separating what this chapter has established from what it proposes, stating the limitations of the design, and relating it to quantum key distribution and to the rest of the dissertation.
+
+\subsection{What Is Validated and What Is Designed}\label{sec:pqc:validated}
+
+Honesty about status is essential in a chapter whose subject is assurance. Three things exist. The NIST standards are final documents with fixed parameter sets~\cite{nist2024fips203,nist2024fips204,nist2024fips205}. The QPC SDK is a released artifact with a persistent identifier~\cite{guo2026lightriderqpc}; its implementations can be exercised against the known-answer vectors of the standards, and its release description commits it to the FIPS 140-3 structure of \cref{sec:pqc:sdk}. The audit of \cref{ch:qec} is a published analysis with reproducible simulations~\cite{guo2026qecaudit}. Three things are designs. The requirements analysis of \cref{sec:pqc:requirements} is the candidate's mapping of the dissertation's artifacts onto security services; the trust chain of \cref{sec:pqc:trustchain} is a protocol proposal that has not been deployed end to end against a commercial provider, because no provider yet exposes ML-DSA-attested results; and module search is described at the level of its interface contract. Most importantly, the SDK is \emph{designed to} the requirements of FIPS 140-3; it has not been submitted to a testing laboratory, and this dissertation makes no claim that a Cryptographic Module Validation Program certificate has been obtained.\todo{state the validation status of the QPC SDK (not submitted / under test / certificate number) at the time of the defense}
+
+\subsection{Limitations}\label{sec:pqc:limitations}
+
+The chapter inherits the limitations of its evidence. Because the stack was evaluated on providers whose channels still use classical TLS, the cost of the trust chain---the added bytes of \cref{tab:pqc:algorithms}, the latency of a signature verification per result batch---has been reasoned about rather than measured on a live queue. The requirements analysis reflects the artifacts of this dissertation; a facility with different workloads would populate \cref{tab:pqc:assets} differently, although R1--R5 are generic. The trust chain assumes a provider willing to sign results and calibration snapshots; where it is not, the client can still authenticate its own submission and bind the seed by commitment, but result authenticity degrades to transport-layer security. Finally, the bounded cloud fault model of \cref{ch:qec} is a model, and empirical characterization of co-located fault injection on real devices remains future work. The natural continuation is a measurement of the trust chain through a submission proxy against a real queue; since queue waits on the devices of \cref{ch:nisq,ch:qml} were minutes to hours, we expect the cryptographic overhead to be invisible at the job level.
+
+\subsection{Relation to Quantum Key Distribution}\label{sec:pqc:qkd}
+
+The advisor's work on secret-key distillation across quantum wiretap channels~\cite{pan2020secretkey} represents the other route to quantum-safe key establishment: quantum key distribution (QKD), whose security follows from physics rather than computational assumptions~\cite{bennett1984bb84,vazirani2014diqkd}. The two are complementary: QKD requires a quantum channel, delivers only key establishment and does not scale to the many-to-many topology of a cloud service, whereas PQC needs no special hardware and covers signatures, key establishment and randomness but rests on conjectured hardness. A facility operating both a QPU and a QKD link could feed QKD-derived key material into the KDF of \cref{eq:pqc:hybrid} as a third input, obtaining a key that is secure unless the classical, the lattice-based \emph{and} the physical assumption all fail; the SDK's KDF service and module search make such a three-way hybrid a configuration rather than a new design, and it is a natural point of contact between this dissertation and the advisor's line of work.
+
+\subsection{Relation to the Other Chapters}\label{sec:pqc:relation}
+
+This chapter closes the arc of the dissertation. The HDF5 artifacts and containers of \cref{ch:qgear} become signed objects in \cref{tab:pqc:assets}; the calibration-driven compilation of \cref{ch:nisq} and \cref{ch:qml} acquires an authenticity requirement on its inputs; the model weights of \cref{ch:synthesis} acquire a long-lived signature; and the reseeded encoders of \cref{ch:qec} draw their randomness from an approved DRBG inside a module boundary. Conversely, the fault-tolerant resource estimates that motivate the migration~\cite{gidney2021rsa,gidney2025million} concern exactly the T-count-constrained circuits that \rubriq{} learns to synthesize, so progress on RQ4 shortens the horizon $z$ in Mosca's inequality and tightens the deadline addressed here.
+
+\section{Summary}\label{sec:pqc:summary}
+
+The quantum cloud is a classical distributed system, and its trustworthiness in the post-quantum era depends on migrating every classical channel it uses to post-quantum cryptography. This chapter enumerated the assets of the stack developed in \cref{ch:qgear,ch:nisq,ch:qml,ch:synthesis,ch:qec}, derived five requirements---hybrid key establishment, post-quantum signatures with a hash-based option for long-lived artifacts, approved randomness inside a module boundary, FIPS 140-3 assurance and crypto-agility---and described the Light Rider QPC SDK~\cite{guo2026lightriderqpc} as a cryptographic module designed to meet them, with ML-KEM, ML-DSA and SLH-DSA from the August 2024 standards, SP~800-90A DRBGs and a module search capability for negotiating suites. It defined an end-to-end trust chain that carries a DRBG-generated seed through commitment, signing, hybrid encryption, execution and attested return to the audit statistic of \cref{ch:qec}, and placed the design against the NIST standardization and transition timeline. Together with \cref{ch:qec} it answers RQ5: error-corrected computation on shared hardware can be made auditable by reseeding, and the reseeding can be made trustworthy by anchoring it in a post-quantum cryptographic module whose standards are already final. \Cref{ch:conclusion} draws the five research questions together.

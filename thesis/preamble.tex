@@ -12,10 +12,16 @@
 \usepgfplotslibrary{groupplots,fillbetween}
 \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
 \SetAlFnt{\singlespacing\small}
+% cleveref is loaded by ttuthesis.cls *before* algorithm2e, so its algorithm2e alias is never
+% installed; name the algocf label type explicitly so \cref{alg:...} prints "Algorithm N".
+\crefname{algocf}{Algorithm}{Algorithms}
+\Crefname{algocf}{Algorithm}{Algorithms}
 \usepackage{listings}
 \lstset{basicstyle=\ttfamily\footnotesize\singlespacing,breaklines=true,columns=fullflexible,
         keepspaces=true,frame=single,framerule=0.3pt,xleftmargin=1em,showstringspaces=false,
         commentstyle=\itshape\color{black!60},keywordstyle=\bfseries}
+\crefname{lstlisting}{Listing}{Listings}
+\Crefname{lstlisting}{Listing}{Listings}
 \lstdefinelanguage{qasm}{morekeywords={OPENQASM,include,qubit,bit,h,cx,rz,ry,measure,reset,barrier},sensitive=true,morecomment=[l]{//}}
 
 % Theorem-like environments (numbered per chapter, Arabic chapter number)

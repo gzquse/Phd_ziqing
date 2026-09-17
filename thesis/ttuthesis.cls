@@ -155,12 +155,13 @@
 
 % Floats and equations numbered per chapter, using Arabic chapter number (Table 3.1, Figure 4.2, Eq. (2.5))
 \RequirePackage{amsmath,amssymb,amsthm}
-\renewcommand{\thefigure}{\arabic{chapter}.\arabic{figure}}
-\renewcommand{\thetable}{\arabic{chapter}.\arabic{table}}
-\renewcommand{\theequation}{\arabic{chapter}.\arabic{equation}}
 \numberwithin{equation}{chapter}
 \numberwithin{figure}{chapter}
 \numberwithin{table}{chapter}
+% Arabic chapter numbers for floats/equations even though chapter headings use Roman numerals
+\renewcommand{\thefigure}{\arabic{chapter}.\arabic{figure}}
+\renewcommand{\thetable}{\arabic{chapter}.\arabic{table}}
+\renewcommand{\theequation}{\arabic{chapter}.\arabic{equation}}
 
 % ---------- Captions: tables above, figures below; "Table 2.1. Title"; single spaced ----------
 \RequirePackage[font={singlespacing,normalsize},labelfont=bf,labelsep=period,justification=justified,singlelinecheck=false]{caption}
@@ -183,12 +184,12 @@
 \renewcommand{\contentsname}{TABLE OF CONTENTS}
 \renewcommand{\listtablename}{LIST OF TABLES}
 \renewcommand{\listfigurename}{LIST OF FIGURES}
-\renewcommand{\cftchapfont}{\normalfont}
+\renewcommand{\cftchapfont}{\normalfont\raggedright}
 \renewcommand{\cftchappagefont}{\normalfont}
 \renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
 \renewcommand{\cftchappresnum}{\MakeUppercase{\chaptername}\ }
 \renewcommand{\cftchapaftersnum}{.}
-\setlength{\cftchapnumwidth}{7.2em}
+\setlength{\cftchapnumwidth}{6.6em}
 \setlength{\cftbeforechapskip}{0.6\baselineskip}
 \setlength{\cftbeforesecskip}{0.35\baselineskip}
 \setlength{\cftbeforesubsecskip}{0.2\baselineskip}
