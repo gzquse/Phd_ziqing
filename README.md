@@ -19,6 +19,7 @@ Apple-Keynote-style morph transitions.
 ├── bib/refs.bib            169 BibTeX entries (biblatex-ieee / biber)
 ├── slides/index.html       defense deck — single self-contained file (68 slides)
 ├── slides/README.md        how to present / export PDF / add slides
+├── slides-ornl/            separate copy of the deck for the ORNL talk (edit independently)
 ├── research/               bibliography of Ziqing Guo's work, TTU formatting requirements, writing guide
 ├── scripts/                check_chapter.sh (compile one chapter), slides_check.py, slides_to_pdf.py
 └── Makefile
