@@ -60,3 +60,9 @@ Recurring ids in this deck: `L1-bg`..`L5-bg` and `L1-t`..`L5-t` are the five sta
 All numbers come from `research/ziqing_guo_bibliography.md`; the thesis statement and research questions are quoted verbatim from `research/WRITING_GUIDE.md`. Charts that connect a few reported values with a scaling law (Q-GEAR time vs qubits, the nonlinear-wave cost model) say so in their footnote. Placeholders to fill in before the defense: the date ("Month DD, 2027") and the committee members on slides 1 and 62.
 
 Design tokens live in `:root` at the top of the `<style>` block (`--bg`, `--fg`, `--acc*`, `--s1`..`--s6`); the light theme redefines them under `@media (prefers-color-scheme: light)` and `:root[data-theme="light"]`. Chart series colours were validated for colour-vision deficiency and contrast on both surfaces; every series also differs by marker shape and dash pattern.
+
+## Published copy (claude.ai artifact)
+
+`artifact.html` is generated from `index.html` by `python3 scripts/build_artifact_fragment.py`
+(it strips the document skeleton, which the claude.ai artifact host adds itself). Edit `index.html`,
+regenerate, and republish the fragment to the same artifact URL to update the online deck.
