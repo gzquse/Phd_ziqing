@@ -1,12 +1,12 @@
 # Ziqing Guo — Ph.D. dissertation & defense slides
-# Targets: make (thesis), make thesis, make slides-pdf, make check, make clean, make zip
+# Targets: make (thesis), make thesis, make slides-pdf, make slides-pptx, make ornl, make check, make clean, make zip
 
 THESIS_DIR := thesis
 MAIN       := main
 PDF        := $(THESIS_DIR)/$(MAIN).pdf
 SLIDES     := slides/index.html
 
-.PHONY: all thesis check clean distclean slides-pdf slides-check zip wordcount todos
+.PHONY: all thesis check clean distclean slides-pdf slides-pptx slides-check ornl zip wordcount todos
 
 all: thesis
 
@@ -34,6 +34,16 @@ todos:
 # Export the web deck as a PDF handout (one slide per page) with headless Chromium
 slides-pdf:
 	python3 scripts/slides_to_pdf.py $(SLIDES) slides/defense-slides.pdf
+
+# Export the web deck as PowerPoint: native text boxes / shapes / pictures with Morph transitions + speaker notes (needs playwright, python-pptx)
+slides-pptx:
+	python3 scripts/slides_to_pptx.py $(SLIDES) slides/defense-slides.pptx --theme=light
+
+# Rebuild the modular ORNL seminar deck from its manifest (slides-ornl/deck.json), then its PowerPoint
+ornl:
+	python3 scripts/build_deck.py slides-ornl/deck.json
+	python3 scripts/slides_check.py slides-ornl/index.html
+	python3 scripts/slides_to_pptx.py slides-ornl/index.html slides-ornl/ornl-slides.pptx --theme=light
 
 # Walk every slide in headless Chromium and fail on console errors
 slides-check:

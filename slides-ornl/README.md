@@ -1,72 +1,34 @@
-# ORNL talk deck
+# ORNL seminar deck (modular)
 
-Separate copy of the Ph.D. defense deck (`../slides/`) for an ORNL talk. Started as an exact copy; edit this folder independently — nothing here is shared with the defense deck.
+`index.html` is the 45-minute ORNL research-seminar cut of the defense deck — **40 slides: 32 in the main run (five of them section dividers) and 8 backups** — weighted toward quantum–HPC integration: Q-GEAR on Perlmutter, GPU knitting in ShardQ, CUDA-Q inside the RubriQ training loop, the nonlinear-wave cost model, and a closing slide on how the stack maps onto OLCF / Frontier. Same engine, theme, Magic-Move transitions and keyboard controls as `../slides/`; see that README for presenting and printing.
 
-# Defense slide deck
+**Do not edit `index.html` by hand — it is generated.** The deck is a composition described in `deck.json`; rebuild with
 
-`index.html` is the complete Ph.D. defense deck for *Scaling Quantum Computing Across the Stack* (Ziqing Guo, Texas Tech University). It is one self-contained file: vanilla HTML, CSS and JavaScript, no external scripts, stylesheets, fonts or images. Every figure and chart is inline SVG or CSS, so the file works offline, from a USB stick, and as a claude.ai artifact.
+```bash
+python3 scripts/build_deck.py slides-ornl/deck.json       # -> index.html + artifact.html
+make ornl                                                  # the same, plus ornl-slides.pptx
+```
 
-- 68 slides (63 talk slides + 5 backup slides), each with speaker notes
-- fixed 1920 x 1080 logical canvas, letterboxed into any window or phone
-- Keynote-style "Magic Move" transitions between adjacent slides
-- dark theme by default, light theme on `T` (initial theme follows the OS setting)
+## How the manifest works
 
-## Presenting
+`deck.json` is a list of slides. Each entry is one of:
 
-Open `index.html` in Chrome, Edge, Safari or Firefox (Chromium gives the smoothest morphs). Press `F` for fullscreen and `S` to open the presenter panel: it shows the current slide's notes, a running timer (click "reset timer" to restart) and the title of the next slide. The panel is part of the same window, so for a two-screen setup open the file twice, put one window on the projector in fullscreen and the other on the laptop with `S`; both follow the URL hash, so typing `#/23` in either window jumps that window to slide 23.
-
-| Key | Action |
+| Entry | Meaning |
 |---|---|
-| `→` `Space` `PageDown` `N` `Enter` | next slide |
-| `←` `PageUp` `Backspace` `P` | previous slide |
-| `Home` / `End` | first / last slide |
-| `O` or `Esc` | overview grid of every slide (click a thumbnail, or move with arrows and press Enter) |
-| `S` | presenter notes panel with timer |
-| `T` | toggle dark / light theme (remembered in `localStorage`) |
-| `F` | fullscreen |
-| `?` or `H` | help overlay |
+| `{"use": "<data-id>"}` | the defense slide with that `data-id` in `../slides/index.html`, verbatim (`qg-time`, `shardq`, …) |
+| `{"use": "<data-id>", "set": {css: html}, "drop": [css …], "notes": "…", "group": "…", "title": "…", "id": "…"}` | the same slide with overrides: `set` replaces the innerHTML of the first element matching each CSS selector (inside the slide), `drop` removes matching elements (an entry may be `{"selector": ".card", "contains": "COMMITTEE"}` to remove only the match containing a string), `notes` replaces the speaker notes, `group` overrides `data-morph-group`, `title` the overview title, `id` the `data-id` |
+| `{"module": "modules/<file>.html"}` | a new slide: one `<section class="slide" …>` in a file, using the same layout classes as the defense deck (`modules/ornl-fit.html` is the OLCF slide) |
+| `{"comment": "…"}` | ignored — use it to mark sections and time budgets |
 
-Also: click or tap the right / left third of the screen, swipe left / right on touch screens, or scroll the mouse wheel (debounced). The URL hash `#/12` deep-links to slide 12 and is updated on every move, so a link or a bookmark reopens the deck at that slide.
+`sec_map` at the top renames the bottom-left chapter labels globally (`"III · Q-GEAR"` → `"Simulation · Q-GEAR"`), so dissertation chapter numbers never reach the seminar. Overrides run in headless Chromium, so inline SVG charts survive untouched, and the engine re-injects page numbers and the Double T for the new slide count.
 
-## Exporting a PDF handout
+**To readjust the talk:** move an entry between the main run and the backup block (the backups follow the `Thank you` slide and carry `"group": "backup"` so they cross-fade rather than morph), delete an entry, reorder entries, or pull in any other defense slide by its `data-id` (`grep 'data-id=' ../slides/index.html` lists them). Then rebuild. Adjacent slides morph when they share a `data-morph-group` token, exactly as in the defense deck, so a reordered run keeps its transitions wherever the groups still touch.
 
-File > Print (or `Ctrl/Cmd+P`), choose "Save as PDF", landscape, margins "None", and enable background graphics. The print stylesheet prints exactly one slide per page on a 1920 x 1080 px page (20 x 11.25 in) in the light theme with the UI hidden; 68 pages for the whole deck. Chrome's `--print-to-pdf` or Playwright's `page.pdf(prefer_css_page_size=True, print_background=True)` produce the same file headlessly.
+## Files
 
-## How the slides are built
+- `deck.json` — the manifest (edit this)
+- `modules/ornl-fit.html` — the new "Where this stack meets OLCF" slide
+- `index.html`, `artifact.html` — generated deck and its claude.ai artifact fragment
+- `ornl-slides.pptx` — generated PowerPoint (native text boxes / shapes / pictures with Morph transitions; `python3 scripts/slides_to_pptx.py slides-ornl/index.html slides-ornl/ornl-slides.pptx`)
 
-Every slide is a `<section class="slide" data-id="..." data-morph-group="...">` inside `#stage`, in presentation order. Inside a slide the layout classes are:
-
-- `.hd` with `.kicker` (small accent label) and `h1` (headline, `h1.xl` on dividers)
-- `.body` fills the rest of the slide (`.body.top` aligns content to the top, `.center` centers it)
-- `.card` / `.row` / `.col` for cards and grids, `.card.stat` + `.num` for big numbers, `.chips` / `.chip` for pills
-- `ul.big` for talk bullets, `table.tbl` (`.sm`, `.xs`) for tables, `pre.code` for pseudo-code
-- `svg.fig` for hand-written charts and diagrams (classes `.s1`..`.s6` / `.k1`..`.k6` are the six colour-blind-safe series fills / strokes, `.ax`, `.grid`, `.ref`, `.ln`, `.box`, `.wire`, `.gate` etc.)
-- `.sec` bottom-left chapter label, `.rail` bottom-right "you are here" rail of the five stack layers
-- `<aside class="notes">` speaker notes (hidden on the slide, shown in the presenter panel)
-
-To add a slide, copy an existing `<section>` and place it where it should appear in the order; the counter, progress bar, overview grid and `#/N` links update automatically. `data-title="..."` overrides the title shown in the overview and notes panel.
-
-## How morph ids work
-
-Between two **adjacent** slides that share at least one token in `data-morph-group` (a divider slide lists two groups, e.g. `data-morph-group="qgear deal"`, to bridge sections), every element whose `data-morph="<id>"` appears on both slides is animated from its old position and size to its new one instead of fading. The engine uses FLIP with the Web Animations API (650 ms, `cubic-bezier(0.32,0.72,0,1)`):
-
-- **plain text** (a leaf element with no background or border): translate + uniform scale from the font-size ratio, plus colour and opacity; if the text content differs it cross-fades while it moves
-- **boxes** (`.bg` inside cards and chips, containers): translate + non-uniform scale, background and border colour
-- **SVG `rect`, `circle`, `ellipse`, `line` and polyline `path` (`M ... L ...` only)**: the geometry attributes themselves are tweened, so bars grow or re-order, points slide along re-scaled axes and lines extend (a shorter polyline is padded with its last point); `fill` is animated too
-- **other SVG nodes** (`text`, `g`): transform FLIP with `transform-box: fill-box`
-
-Elements present only on the outgoing slide fade and scale to 0.97; elements only on the incoming slide fade in and rise 24 px with a 36 ms stagger in DOM order. A container that holds a matched element is not faded as a whole; the engine recurses into it so its other children fade individually. Ids must be unique within a slide. Navigating backwards morphs backwards automatically. Jumping to a non-adjacent slide, or to a slide in a different group, cross-fades. With `prefers-reduced-motion: reduce` every transition is a plain cross-fade.
-
-Recurring ids in this deck: `L1-bg`..`L5-bg` and `L1-t`..`L5-t` are the five stack layers (cards on slide 3, agenda rows, RQ rows, contribution rows, the rail on every divider and takeaway, and the answers on slide 58); `sec` is the chapter label; `kicker` cross-fades the header label; chart ids are prefixed per chart (`qg-*` Q-GEAR time vs qubits, `dl-*` DEAL gains, `pp-*` VQT perplexity bars, `qe-*` QEC disturbance bars).
-
-## Sources and conventions
-
-All numbers come from `research/ziqing_guo_bibliography.md`; the thesis statement and research questions are quoted verbatim from `research/WRITING_GUIDE.md`. Charts that connect a few reported values with a scaling law (Q-GEAR time vs qubits, the nonlinear-wave cost model) say so in their footnote. Placeholders to fill in before the defense: the date ("Month DD, 2027") and the committee members on slides 1 and 62.
-
-Design tokens live in `:root` at the top of the `<style>` block (`--bg`, `--fg`, `--acc*`, `--s1`..`--s6`); the light theme redefines them under `@media (prefers-color-scheme: light)` and `:root[data-theme="light"]`. Chart series colours were validated for colour-vision deficiency and contrast on both surfaces; every series also differs by marker shape and dash pattern.
-
-## Published copy (claude.ai artifact)
-
-`artifact.html` is generated from `index.html` by `python3 scripts/build_artifact_fragment.py`
-(it strips the document skeleton, which the claude.ai artifact host adds itself). Edit `index.html`,
-regenerate, and republish the fragment to the same artifact URL to update the online deck.
+Placeholders still to fill: the date on the title slide ("2026 · date TBD").

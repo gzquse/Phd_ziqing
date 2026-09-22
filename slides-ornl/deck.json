@@ -1,0 +1,272 @@
+{
+  "title": "ORNL seminar — Quantum Computing and Circuit Simulation",
+  "description": "ORNL research seminar: Quantum Computing and Circuit Simulation — a co-designed quantum–HPC stack. Ziqing Guo, Texas Tech University.",
+  "source": "../slides/index.html",
+  "_readme": [
+    "45-minute cut of the defense deck, weighted toward quantum–HPC integration (Q-GEAR, GPU knitting, simulator-in-the-loop, cost accounting).",
+    "Each entry is one slide. 'use' pulls a slide from ../slides/index.html by its data-id and applies optional overrides;",
+    "'module' inserts a new slide from a file in modules/. Reorder, delete or move entries between the main run and the",
+    "backup block, then run:  python3 scripts/build_deck.py slides-ornl/deck.json   (or: make ornl).",
+    "Dissertation-only wording (chapter numbers, RQ labels, committee) is rewritten here; the defense deck is untouched."
+  ],
+  "sec_map": {
+    "Introduction": "Introduction",
+    "III · Q-GEAR": "Simulation · Q-GEAR",
+    "IV · DEAL & QAWA": "Algorithms · DEAL & QAWA",
+    "V · Quantum learning": "Data · Quantum learning",
+    "VI · Synthesis & cost": "Synthesis & cost",
+    "VII · QEC audit": "Trust · QEC audit",
+    "VIII · Post-quantum stack": "Trust · Post-quantum stack",
+    "IX · Conclusion": "Closing",
+    "Questions": "Questions",
+    "Backup": "Backup"
+  },
+  "slides": [
+    {
+      "comment": "———————————————————— opening (≈4 min) ————————————————————"
+    },
+    {
+      "use": "title",
+      "title": "Title",
+      "set": {
+        ".body .kicker": "Research seminar · Oak Ridge National Laboratory",
+        ".who": "<p class=\"small\">Ph.D. candidate, Department of Computer Science, Texas Tech University · Advisor: Dr. Ziwen Pan</p><p class=\"tiny\" style=\"margin-top:6px\">Oak Ridge, Tennessee · 2026 · date TBD</p>"
+      },
+      "notes": "Thank you for having me. I am a Ph.D. candidate at Texas Tech, and this talk is the HPC-facing half of my dissertation: how classical high-performance computing surrounds a quantum processor at every layer, from GPU simulation of 42-qubit circuits on a thousand A100s to the cost accounting that says when the quantum step is worth it. About 35 minutes of material, then I would like to spend the rest on how this maps onto Frontier and OLCF."
+    },
+    {
+      "use": "thesis"
+    },
+    {
+      "use": "stack",
+      "set": {
+        ".hd .kicker": "The co-designed stack · roadmap for this talk",
+        ".stack .card:nth-child(1) .idx": "01 · Scale",
+        ".stack .card:nth-child(2) .idx": "02 · Noise",
+        ".stack .card:nth-child(3) .idx": "03 · Data",
+        ".stack .card:nth-child(4) .idx": "04 · Synthesis",
+        ".stack .card:nth-child(5) .idx": "05 · Trust"
+      },
+      "notes": "These five cards are the map for the talk; they come back as a rail on every section divider. I will spend the most time on the two layers where the HPC facility does the heavy lifting: simulation and synthesis. Algorithms, data encoding and trust each get one headline result; the rest is in the backup slides."
+    },
+    {
+      "use": "wall"
+    },
+    {
+      "comment": "———————————————————— layer 1 · simulation (≈10 min) ————————————————————"
+    },
+    {
+      "use": "div-qgear",
+      "set": {
+        ".kicker": "Layer 1 · Scale"
+      }
+    },
+    {
+      "use": "qg-pipeline"
+    },
+    {
+      "use": "qg-node"
+    },
+    {
+      "use": "qg-time"
+    },
+    {
+      "use": "qg-scale"
+    },
+    {
+      "use": "qg-table",
+      "set": {
+        ".hd .kicker": "Takeaway · benchmark suite",
+        "h1": "42 qubits, program unchanged",
+        ".lead": "Reused downstream: validates the DEAL circuits before hardware · evaluator inside RubriQ’s training loop"
+      }
+    },
+    {
+      "comment": "———————————————————— layer 2 · algorithms (≈6 min) ————————————————————"
+    },
+    {
+      "use": "div-deal",
+      "set": {
+        ".kicker": "Layer 2 · Noise"
+      }
+    },
+    {
+      "use": "deal-idea"
+    },
+    {
+      "use": "deal-res1",
+      "notes": "On IBM Torino, a 133-qubit Heron-1, DEAL reaches the ground-state energy 14.8 percentage points more often than vanilla QAOA at ten layers, with lower variance; on the right, seven DEAL layers match what QAOA needs nine for, which matters because each layer spends part of the forty-CZ budget. The Heron-2 repeat (Marrakesh, +7.4 points) is in the backup slides. Every one of these circuits was validated with the Q-GEAR GPU path before it went to hardware."
+    },
+    {
+      "use": "deal-take",
+      "set": {
+        ".hd .kicker": "Takeaway",
+        "h1": "Structure beats search",
+        "ul.big li:nth-child(4)": "Next: make the data these algorithms consume cheap to load"
+      }
+    },
+    {
+      "comment": "———————————————————— layer 3 · data & learning (≈7 min) ————————————————————"
+    },
+    {
+      "use": "div-qml",
+      "set": {
+        ".kicker": "Layer 3 · Data"
+      }
+    },
+    {
+      "use": "qcrank"
+    },
+    {
+      "use": "shardq"
+    },
+    {
+      "use": "nnqa"
+    },
+    {
+      "use": "qml-take",
+      "set": {
+        ".hd .kicker": "Takeaway",
+        "h1": "Vectorize, then learn"
+      },
+      "notes": "One encoding, four uses: vectorized loading is what makes attention shot-efficient, what ShardQ cuts to fit the hardware, and what NNQA compiles into. QPIE and VQT — the hybrid network and the quantum transformer — are in the dissertation and the backup material; the two I showed are the ones where the HPC side does real work: GPU knitting of cut circuits, and polynomial networks trained on Perlmutter and compiled exactly into circuits."
+    },
+    {
+      "comment": "———————————————————— layer 4 · synthesis & cost (≈7 min) ————————————————————"
+    },
+    {
+      "use": "div-synth",
+      "set": {
+        ".kicker": "Layer 4 · Synthesis"
+      }
+    },
+    {
+      "use": "rubriq-loop"
+    },
+    {
+      "use": "rubriq-res"
+    },
+    {
+      "use": "wave-cost"
+    },
+    {
+      "use": "synth-take",
+      "set": {
+        ".hd .kicker": "Takeaway",
+        "h1": "Honest accounting"
+      }
+    },
+    {
+      "comment": "———————————————————— layer 5 · trust (≈4 min) ————————————————————"
+    },
+    {
+      "use": "div-qec",
+      "set": {
+        ".kicker": "Layer 5 · Trust"
+      }
+    },
+    {
+      "use": "qec-threat"
+    },
+    {
+      "use": "qec-res2",
+      "notes": "With the five-qubit code and every weight-one fault enumerated, a fixed public encoder gives a mean accepted logical disturbance of 0.150. Reseeding the encoder per run brings it to 0.020, an 86.7 percent reduction, and the reduction is attributable to rejection: with a fresh encoder the pre-chosen fault is caught by the syndrome check most of the time. Gate-level Stim simulations at 17 qubits confirm the trend. The seed is the only secret, which is where the post-quantum module in the backup slides comes in."
+    },
+    {
+      "comment": "———————————————————— closing (≈5 min) ————————————————————"
+    },
+    {
+      "use": "answers",
+      "set": {
+        ".hd .kicker": "Closing",
+        ".stack .card:nth-child(1) .idx": "01 · Scale",
+        ".stack .card:nth-child(2) .idx": "02 · Noise",
+        ".stack .card:nth-child(3) .idx": "03 · Data",
+        ".stack .card:nth-child(4) .idx": "04 · Synthesis",
+        ".stack .card:nth-child(5) .idx": "05 · Trust"
+      }
+    },
+    {
+      "module": "modules/ornl-fit.html"
+    },
+    {
+      "use": "limits"
+    },
+    {
+      "use": "thanks-ack",
+      "drop": [
+        {
+          "selector": ".card",
+          "contains": "COMMITTEE"
+        }
+      ],
+      "notes": "None of this was solo work. My advisor Ziwen Pan at Texas Tech; Jan Balewski at NERSC, whose encodings and allocations run through half the chapters; coauthors across seven institutions; the DOE Office of Science and NERSC ERCAP awards, the TTU HPC center, UMD QLab and Xanadu; and the hardware providers, IBM Quantum and IonQ. Thank you."
+    },
+    {
+      "use": "end",
+      "set": {
+        ".lead": "Questions?"
+      }
+    },
+    {
+      "comment": "———————————————————— backup ————————————————————"
+    },
+    {
+      "use": "pubs",
+      "group": "backup",
+      "set": {
+        ".hd .kicker": "Backup · Publications",
+        ".sec": "Backup"
+      }
+    },
+    {
+      "use": "qg-speed",
+      "group": "backup",
+      "set": {
+        ".hd .kicker": "Backup · Q-GEAR speed-ups",
+        ".sec": "Backup"
+      }
+    },
+    {
+      "use": "deal-res2",
+      "group": "backup",
+      "set": {
+        ".hd .kicker": "Backup · DEAL on Heron-2",
+        ".sec": "Backup"
+      }
+    },
+    {
+      "use": "vqt-hw",
+      "group": "backup",
+      "set": {
+        ".hd .kicker": "Backup · VQT on hardware",
+        ".sec": "Backup"
+      }
+    },
+    {
+      "use": "qec-standards",
+      "group": "backup",
+      "set": {
+        ".hd .kicker": "Backup · Standards mapping",
+        ".sec": "Backup"
+      },
+      "drop": [
+        ".rail"
+      ]
+    },
+    {
+      "use": "pqc-sdk",
+      "group": "backup",
+      "set": {
+        ".hd .kicker": "Backup · QPC SDK",
+        ".sec": "Backup"
+      }
+    },
+    {
+      "use": "bk-hw"
+    },
+    {
+      "use": "bk-repro"
+    }
+  ]
+}

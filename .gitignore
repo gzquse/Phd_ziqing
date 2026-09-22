@@ -19,3 +19,6 @@ thesis/main.pdf
 .DS_Store
 *.swp
 node_modules/
+
+# Office lock files
+~$*
