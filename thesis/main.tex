@@ -5,20 +5,22 @@
 \input{preamble}
 
 % ---------------- Metadata ----------------
-\title{Scaling Quantum Computing Across the Stack: GPU-Accelerated Circuit Simulation, Hardware-Aware Algorithms, Quantum Learning, and Verifiable Error Correction for the Post-Quantum Era}
+\title{Quantum Computing and Circuit Simulation}   % same title as the defense deck
 \author{Ziqing Guo}
 \credentials{B.S., M.S.}            % TODO: confirm previously earned degrees exactly as on the transcript
 \department{Computer Science}
 \degree{Doctor of Philosophy}
-\graduationmonth{May}               % TODO: graduation month
-\graduationyear{2027}               % TODO: graduation year
+\graduationmonth{December}
+\graduationyear{2027}
 \committeechair{Ziwen Pan, Ph.D.}
-\committeemember{Committee Member, Ph.D.}     % TODO
-\committeemember{Committee Member, Ph.D.}     % TODO
-\committeemember{Committee Member, Ph.D.}     % TODO
+\committeemember{Zihao Zhan, Ph.D.}
+\committeemember{Susan Mengel, Ph.D.}
+\committeemember{Lu Wei, Ph.D.}
+% Dean's representative (Anne E. V. Gorden, Ph.D.) is intentionally NOT listed:
+% TTU title-page rules exclude the Dean's Representative (research/ttu_format_requirements.md).
 \graduatedean{Mark Sheridan, Ph.D.}          % TODO: confirm current Dean of the Graduate School
 
-\addbibresource{../bib/refs.bib}
+\addbibresource{refs.bib}   % symlink -> ../bib/refs.bib (tectonic/biber cannot follow ../ paths)
 
 \begin{document}
 
@@ -37,8 +39,8 @@
 \input{chapters/ch01-introduction}
 \input{chapters/ch02-background}
 \input{chapters/ch03-qgear}
-\input{chapters/ch04-nisq-optimization}
-\input{chapters/ch05-quantum-learning}
+\input{chapters/ch05-quantum-learning}   % Chapter IV (RQ2, algorithms / encodings) -- order follows the defense deck
+\input{chapters/ch04-nisq-optimization}  % Chapter V  (RQ3, optimization on noisy devices)
 \input{chapters/ch06-ai-synthesis}
 \input{chapters/ch07-qec-security}
 \input{chapters/ch08-pqc}
@@ -49,6 +51,5 @@
 \ttuappendices
 \input{appendices/appA-qgear-artifacts}
 \input{appendices/appB-reproducibility}
-\input{appendices/appC-ai-use}
 
 \end{document}

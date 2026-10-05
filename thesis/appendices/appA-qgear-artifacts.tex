@@ -1,5 +1,6 @@
 \chapter{Q-GEAR Configuration and Usage}\label{app:qgear}
 
+
 This appendix collects the operational details of the \qgear{} framework of \cref{ch:qgear} that are needed to reproduce the simulation results but do not belong in the main text: the environment setup on the NERSC Perlmutter system, the HDF5 layout used to move circuits between the \qiskit{} front end and the \cudaq{} back end, a minimal Python usage example, a Slurm batch skeleton for a multi-node GPU job, and the gate mapping that the transformer implements. The software is released under the Apache-2.0 license at \url{https://github.com/gzquse/qgear}~\cite{guo2025qgearsoftware}; the multi-node launch scripts derive from the \texttt{cudaq-perlmutter} repository at \url{https://github.com/gzquse/cudaq-perlmutter}. The numbers quoted here (34 qubits on four A100 GPUs in about one minute, 42 qubits on up to 1,024 GPUs) are those reported in \cite{guo2025qgear}.
 
 \section{Environment Setup on NERSC Perlmutter}\label{sec:appqgear:setup}
@@ -18,7 +19,7 @@ The last line registers the environment as a Jupyter kernel. After logging in at
 
 \section{HDF5 Tensor Layout}\label{sec:appqgear:hdf5}
 
-The transformer does not serialize \qiskit{} objects. It flattens a list of circuits into three fixed-shape NumPy tensors and a JSON metadata string, and writes them to a single HDF5 file that can be read on any node without importing \qiskit{}. \Cref{tab:appqgear:hdf5} gives the datasets. Circuits shorter than \texttt{nGate} gates are padded with a no-operation gate identifier so that a whole batch is a rectangular tensor, which is what allows thousands of circuits to be dispatched to GPUs with a single read.
+The transformer does not serialize \qiskit{} objects. It flattens a list of circuits into three fixed-shape NumPy tensors and a JSON metadata string, and writes them to a single HDF5 file that can be read on any node without importing \qiskit{}. \Cref{tab:appqgear:hdf5} gives the datasets. Circuits in a batch share one gate dimension \texttt{nGate}, so that a whole batch is a rectangular tensor from which thousands of circuits can be dispatched to GPUs with a single read; each circuit's own gate count travels in its \texttt{circ\_type} row, and the kernel executes only that many entries.
 
 \begin{table}[htbp]
 \caption{Datasets of the \qgear{} HDF5 circuit file. \texttt{nCirc} is the number of circuits in the batch and \texttt{nGate} the padded gate count. Field order within the last axis is that of the version used in \cref{ch:qgear}.}
@@ -38,7 +39,7 @@ Dataset & Shape & Type & Content \\
 \endgroup
 \end{table}
 
-The gate-identifier dictionary in \texttt{meta.JSON} maps the integer codes in \texttt{gate\_type} to the gate names of \cref{tab:appqgear:gates}, so that a file remains self-describing if the supported gate set is extended.\todo{confirm the field order of gate\_type and gate\_param and the padding convention against the qgear documentation}
+The gate-identifier dictionary in \texttt{meta.JSON} maps the integer codes in \texttt{gate\_type} to the gate names of \cref{tab:appqgear:gates}, so that a file remains self-describing if the supported gate set is extended. In the released package the integer codes are 1~(\texttt{h}), 2~(\texttt{ry}), 3~(\texttt{rz}), 4~(\texttt{cx}), 5~(\texttt{measure}), 6~(\texttt{cp}), 7~(\texttt{swap}) and 8~(\texttt{u3}); each \texttt{gate\_type} row holds the code followed by the primary target qubit and the second (control or target) qubit, and the parameter slots of \texttt{gate\_param} are left at zero for parameter-free gates, as in the random CX-block generator of the package.
 
 \section{Minimal Python Usage}\label{sec:appqgear:python}
 
@@ -46,7 +47,9 @@ Listing~\ref{lst:appqgear:python} shows the complete round trip: build \qiskit{}
 
 \begin{lstlisting}[language=Python,caption={End-to-end use of the \qgear{} API on a single GPU node.},label={lst:appqgear:python}]
 from qiskit import QuantumCircuit
-from qgear.runner import qiskit_to_gateList, run_cudaq, counts_cudaq_to_qiskit
+from qgear.runner import run_cudaq
+from qgear.toolbox.Util_CudaQ import qiskit_to_gateList
+from qgear.toolbox.Util_CudaQ import counts_cudaq_to_qiskit
 from qgear.toolbox.Util_H5io4 import write4_data_hdf5, read4_data_hdf5
 
 # 1. Build (or load) a list of Qiskit circuits using the supported gate set
@@ -66,14 +69,20 @@ write4_data_hdf5(gate_lists, "circuits.h5", metaD=meta)
 
 # 4. On the GPU node: read back and execute with CUDA-Q
 big_data, meta = read4_data_hdf5("circuits.h5")
-results = run_cudaq(big_data, meta, shots=10_000, target="nvidia")
+results, states = run_cudaq(big_data, shots=10_000,
+                            backend="nvidia")
 
 # 5. Convert CUDA-Q sample results to Qiskit-style counts
-counts = [counts_cudaq_to_qiskit(r) for r in results]
+counts = counts_cudaq_to_qiskit(results)
 print(counts[0])
 \end{lstlisting}
 
-The function names follow the package as used for \cref{ch:qgear}; the HDF5 helpers live in the shared \texttt{toolbox} module inherited from the \qcrank{} encoder code of Balewski et al.~\cite{balewski2024qcrank}.\todo{confirm import paths and argument names against the released qgear API}
+The function names follow the package as used for \cref{ch:qgear}; the HDF5 helpers live in the shared \texttt{toolbox} module inherited from the \qcrank{} encoder code of Balewski et al.~\cite{balewski2024qcrank}. In the released package (\texttt{qgear}~1.1.2) the functions live in the following modules:
+\begin{itemize}
+\item \texttt{qgear.toolbox.Util\_CudaQ}:\\ \texttt{qiskit\_to\_gateList}, \texttt{counts\_cudaq\_to\_qiskit};
+\item \texttt{qgear.toolbox.Util\_H5io4}:\\ \texttt{write4\_data\_hdf5}, \texttt{read4\_data\_hdf5};
+\item \texttt{qgear.runner}:\\ \texttt{run\_cudaq(gateD, shots, verb, backend)}, which returns the sampled counts together with the state vectors.
+\end{itemize}
 
 \section{Multi-Node Slurm Batch Script}\label{sec:appqgear:slurm}
 

@@ -1,4 +1,16 @@
 %% preamble.tex — packages and macros shared by all chapters
+% Engine compatibility: biber writes UTF-8 into the .bbl. Under pdfTeX, inputenc maps
+% characters outside Latin-1 to T1 glyphs; under XeTeX (tectonic) they would be silently
+% dropped from the 8-bit Times fonts, so map them explicitly.
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{newunicodechar}
+  \newunicodechar{č}{\v{c}}\newunicodechar{Č}{\v{C}}\newunicodechar{ě}{\v{e}}\newunicodechar{ř}{\v{r}}
+  \newunicodechar{š}{\v{s}}\newunicodechar{Š}{\v{S}}\newunicodechar{ž}{\v{z}}\newunicodechar{Ž}{\v{Z}}
+  \newunicodechar{Ł}{\L{}}\newunicodechar{ł}{\l{}}\newunicodechar{ń}{\'n}\newunicodechar{ś}{\'s}
+  \newunicodechar{ć}{\'c}\newunicodechar{ż}{\.z}\newunicodechar{ź}{\'z}\newunicodechar{ę}{\k{e}}\newunicodechar{ą}{\k{a}}
+  \newunicodechar{ő}{\H{o}}\newunicodechar{ű}{\H{u}}\newunicodechar{ğ}{\u{g}}\newunicodechar{ş}{\c{s}}\newunicodechar{ı}{\i}
+\fi
 \usepackage{physics}          % \ket, \bra, \expval, \dd, \abs, \norm
 \usepackage{bm}
 \usepackage{mathtools}

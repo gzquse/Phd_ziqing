@@ -68,6 +68,9 @@
 \clubpenalty=10000
 \widowpenalty=10000
 \displaywidowpenalty=10000
+% Let TeX take a third line-breaking pass before pushing text into the right margin
+% (manual: all content must fit within the margins).
+\setlength{\emergencystretch}{2em}
 \RequirePackage{needspace}
 
 % ---------- Metadata macros ----------
@@ -171,6 +174,16 @@
 \RequirePackage{booktabs,multirow,longtable,threeparttable,array,tabularx}
 \RequirePackage{graphicx}
 \RequirePackage{float}
+% Float-only pages start at the top margin instead of being centred vertically,
+% so a lone table or figure does not leave a large blank area above it.
+\setlength{\@fptop}{0pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\setlength{\@dblfptop}{0pt}
+\setlength{\@dblfpbot}{0pt plus 1fil}
+% Avoid float pages that are half empty: a float page is only made when floats fill 70% of it.
+\renewcommand{\topfraction}{0.8}
+\renewcommand{\bottomfraction}{0.5}
+\renewcommand{\floatpagefraction}{0.7}
 
 % ---------- TOC / LOT / LOF ----------
 \RequirePackage{tocloft}
@@ -218,7 +231,7 @@
 \RequirePackage[nameinlink,capitalise,noabbrev]{cleveref}
 \crefname{chapter}{Chapter}{Chapters}
 \Crefname{chapter}{Chapter}{Chapters}
-\AtBeginDocument{\hypersetup{pdftitle={\ttu@title},pdfauthor={\ttu@author},pdflang={en-US}}}
+\AtBeginDocument{\hypersetup{pdftitle={\ttu@title},pdfauthor={\ttu@author},pdflang={en-US},pdfdisplaydoctitle=true}}
 
 % ---------- Title page ----------
 \newcommand{\ttu@doctype}{\if@ttudissertation A Dissertation\else A Thesis\fi}
@@ -292,8 +305,6 @@
 % ---------- Main matter ----------
 \newcommand{\ttumainmatter}{\clearpage\pagenumbering{arabic}\setcounter{page}{1}\pagestyle{ttumain}\ttubodyspacing}
 
-% Optional AI-use declaration to be placed directly under a chapter heading (TTU AI policy)
-\newcommand{\aideclaration}[1]{\begingroup\singlespacing\small\noindent\textit{AI-use declaration.} #1\par\endgroup\vspace{8pt}}
 % Authorship / publication statement for multi-paper chapters
 \newcommand{\authorshipstatement}[1]{\begingroup\singlespacing\small\noindent\textit{Publication note.} #1\par\endgroup\vspace{8pt}}
 
@@ -310,6 +321,7 @@
   \clearpage
   \appendix
   \renewcommand{\thechapter}{\Alph{chapter}}%
+  \renewcommand{\thesection}{\thechapter.\arabic{section}}% A.1, not 1.1
   \renewcommand{\thefigure}{\thechapter.\arabic{figure}}%
   \renewcommand{\thetable}{\thechapter.\arabic{table}}%
   \renewcommand{\theequation}{\thechapter.\arabic{equation}}%

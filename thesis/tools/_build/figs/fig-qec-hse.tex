@@ -1,0 +1,108 @@
+\documentclass[border=4pt,varwidth=6in]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{courier}
+\usepackage{setspace}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[font={singlespacing,normalsize},labelfont=bf,labelsep=period,justification=justified,singlelinecheck=false]{caption}
+\usepackage{subcaption}
+\usepackage{booktabs,multirow,longtable,threeparttable,array,tabularx}
+\usepackage{enumitem}
+%% preamble.tex — packages and macros shared by all chapters
+% Engine compatibility: biber writes UTF-8 into the .bbl. Under pdfTeX, inputenc maps
+% characters outside Latin-1 to T1 glyphs; under XeTeX (tectonic) they would be silently
+% dropped from the 8-bit Times fonts, so map them explicitly.
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{newunicodechar}
+  \newunicodechar{č}{\v{c}}\newunicodechar{Č}{\v{C}}\newunicodechar{ě}{\v{e}}\newunicodechar{ř}{\v{r}}
+  \newunicodechar{š}{\v{s}}\newunicodechar{Š}{\v{S}}\newunicodechar{ž}{\v{z}}\newunicodechar{Ž}{\v{Z}}
+  \newunicodechar{Ł}{\L{}}\newunicodechar{ł}{\l{}}\newunicodechar{ń}{\'n}\newunicodechar{ś}{\'s}
+  \newunicodechar{ć}{\'c}\newunicodechar{ż}{\.z}\newunicodechar{ź}{\'z}\newunicodechar{ę}{\k{e}}\newunicodechar{ą}{\k{a}}
+  \newunicodechar{ő}{\H{o}}\newunicodechar{ű}{\H{u}}\newunicodechar{ğ}{\u{g}}\newunicodechar{ş}{\c{s}}\newunicodechar{ı}{\i}
+\fi
+\usepackage{physics}          % \ket, \bra, \expval, \dd, \abs, \norm
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{siunitx}
+\sisetup{detect-all,per-mode=symbol,range-phrase=--,range-units=single}
+\usepackage{tikz}
+\usetikzlibrary{quantikz2}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit,backgrounds,matrix,decorations.pathreplacing}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots,fillbetween}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\SetAlFnt{\singlespacing\small}
+% cleveref is loaded by ttuthesis.cls *before* algorithm2e, so its algorithm2e alias is never
+% installed; name the algocf label type explicitly so \cref{alg:...} prints "Algorithm N".
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\footnotesize\singlespacing,breaklines=true,columns=fullflexible,
+        keepspaces=true,frame=single,framerule=0.3pt,xleftmargin=1em,showstringspaces=false,
+        commentstyle=\itshape\color{black!60},keywordstyle=\bfseries}
+\lstdefinelanguage{qasm}{morekeywords={OPENQASM,include,qubit,bit,h,cx,rz,ry,measure,reset,barrier},sensitive=true,morecomment=[l]{//}}
+
+% Theorem-like environments (numbered per chapter, Arabic chapter number)
+
+% Color-blind-safe palette for plots (also varies markers/line styles: TTU accessibility rule)
+\definecolor{cbBlue}{HTML}{0072B2}
+\definecolor{cbOrange}{HTML}{E69F00}
+\definecolor{cbGreen}{HTML}{009E73}
+\definecolor{cbRed}{HTML}{D55E00}
+\definecolor{cbPurple}{HTML}{CC79A7}
+\definecolor{cbSky}{HTML}{56B4E9}
+\definecolor{cbGray}{HTML}{555555}
+\pgfplotscreateplotcyclelist{ttu}{%
+  {cbBlue,mark=*,solid},{cbOrange,mark=square*,dashed},{cbGreen,mark=triangle*,dotted},
+  {cbRed,mark=diamond*,dashdotted},{cbPurple,mark=pentagon*,densely dashed},{cbGray,mark=o,loosely dotted}}
+\pgfplotsset{every axis/.append style={cycle list name=ttu,width=0.8\linewidth,height=0.5\linewidth,
+  tick label style={font=\small},label style={font=\small},legend style={font=\footnotesize,cells={anchor=west}},
+  grid=major,grid style={black!12}}}
+
+% Domain macros
+\newcommand{\qgear}{Q-GEAR}
+\newcommand{\deal}{DEAL}
+\newcommand{\qawa}{QAWA}
+\newcommand{\qpie}{QPIE}
+\newcommand{\vqt}{VQT}
+\newcommand{\shardq}{ShardQ}
+\newcommand{\nnqa}{NNQA}
+\newcommand{\rubriq}{RubriQ}
+\newcommand{\cudaq}{CUDA-Q}
+\newcommand{\qiskit}{Qiskit}
+\newcommand{\qcrank}{QCrank}
+\newcommand{\bigO}[1]{\mathcal{O}\!\left(#1\right)}
+\newcommand{\Hcost}{H_C}
+\newcommand{\Hmix}{H_M}
+\newcommand{\code}[3]{[[#1,#2,#3]]}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+% \Tr provided by physics
+\DeclareMathOperator{\poly}{poly}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\todo}[1]{{\color{red!70!black}\textbf{[TODO: #1]}}}
+\providecommand{\cref}[1]{#1}
+\providecommand{\Cref}[1]{#1}
+\providecommand{\labelcref}[1]{#1}
+\providecommand{\ref}[1]{#1}
+\providecommand{\cite}[1]{[#1]}
+\begin{document}
+\begin{figure}[H]
+\centering
+\begin{quantikz}[row sep={7mm,between origins},column sep=5mm,font=\small]
+\lstick{$\ket{\psi}$} & \gategroup[5,steps=1,style={dashed,rounded corners,fill=cbSky!12,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=0.15cm}]{$\mathrm{H}_{A_\ell}$} & \gate{S}\gategroup[5,steps=1,style={dashed,rounded corners,fill=cbOrange!12,inner xsep=2pt},background,label style={label position=below,anchor=north,yshift=-0.15cm}]{$\mathrm{S}_{B_\ell}$} & \gategroup[5,steps=1,style={dashed,rounded corners,fill=cbGreen!12,inner xsep=2pt},background,label style={label position=above,anchor=south,yshift=0.15cm}]{$\Pi_{\sigma_\ell}$} & \ctrl{1}\gategroup[5,steps=1,style={dashed,rounded corners,fill=cbPurple!12,inner xsep=2pt},background,label style={label position=below,anchor=north,yshift=-0.15cm}]{$\mathrm{C}_{M_\ell}$} & \gate[5,style={fill=white}]{\text{layers }2,\dots,d} & \gate[5,style={fill=white}]{\text{syndrome; reject if }\sigma\neq 0} & \\
+\lstick{$\ket{0}$} & \gate{H} &          & \swap{1}  & \targ{}  &  &  & \\
+\lstick{$\ket{0}$} &          & \gate{S} & \targX{}  & \ctrl{1} &  &  & \\
+\lstick{$\ket{0}$} & \gate{H} &          &           & \targ{}  &  &  & \\
+\lstick{$\ket{0}$} &          &          &           &          &  &  &
+\end{quantikz}
+\end{figure}
+\end{document}

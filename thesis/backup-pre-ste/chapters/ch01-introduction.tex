@@ -1,0 +1,112 @@
+\chapter{Introduction}\label{ch:intro}
+
+
+Quantum computers have crossed from laboratory curiosities to programmable, cloud-accessible machines with more than a hundred qubits, yet no quantum processor available today can complete a computation of practical value without an enormous amount of classical computation wrapped around it. Circuits are designed, compiled, simulated and debugged on classical hardware before they are ever executed; their parameters are optimized by classical loops; their noisy outputs are post-processed, mitigated and, eventually, error-corrected by classical decoders; and the entire workflow is scheduled, transported and secured by classical infrastructure. This dissertation starts from the observation that the classical side of that relationship is not a temporary scaffold that will be removed once the hardware matures. It is a permanent and load-bearing part of the architecture, and its design determines how much useful work a given quantum processor can deliver. The thesis defended here is that useful quantum computation in the coming decade will be produced by a \emph{co-designed stack} in which classical high-performance computing (HPC) surrounds the quantum processing unit (QPU) at every layer, and that each layer of that stack poses concrete research problems whose solutions compound.
+
+\section{Motivation}\label{sec:intro:motivation}
+
+Four gaps motivate the work. The first is a \emph{scale} gap in simulation. Exact state-vector simulation of an $n$-qubit circuit requires $2^{n}$ complex amplitudes, and every additional qubit doubles the memory and time. A 32-qubit state vector in single precision occupies \SI{32}{\gibi\byte}, which fits on one data-center GPU; a 42-qubit state vector requires tens of terabytes and can only be held by a large fraction of a leadership-class supercomputer. Researchers nevertheless need simulation at exactly this scale, because it is the regime where today's hardware produces results that can neither be trusted nor fully verified, and because the algorithms of \cref{ch:nisq,ch:qml} were developed and validated in simulation before they were run on hardware. The practical obstacle is not the existence of GPU simulators, which are mature, but the friction of using them: circuits written in the dominant Python framework, \qiskit, cannot be handed to GPU-native simulators such as \cudaq{} without rewriting, and deploying those simulators across hundreds of nodes of a Slurm-managed system with containers and MPI is a specialist task. \Cref{ch:qgear} addresses this gap.
+
+The second is a \emph{data} gap at the classical--quantum interface. Most proposed quantum machine-learning models spend more resources loading classical data into a quantum state and reading results back than they spend computing. Angle encodings use one qubit per feature; amplitude encodings require circuits of depth exponential in the number of qubits; and readout of a single expectation value to precision $\epsilon$ requires $\bigO{1/\epsilon^{2}}$ shots. Encodings that load many data values in parallel into a small register and read out many expectation values in parallel from the same circuit, exemplified by \qcrank, change this arithmetic and make it possible to build learning primitives that are shot-efficient and hardware-compatible. \Cref{ch:qml} builds four such primitives.
+
+The third is a \emph{noise} gap in algorithm design. Variational algorithms such as the quantum approximate optimization algorithm (QAOA) treat the quantum processor as a black box whose parameters are tuned by a classical optimizer using noisy expectation-value estimates. On current superconducting devices with two-qubit gate errors near $10^{-3}$ and coherence times of a few hundred microseconds, the optimization loop spends most of its shot budget fighting noise, converges slowly, and often fails to find the ground state that a classical solver would find in milliseconds. The problem instances, however, are not black boxes. A quadratic unconstrained binary optimization (QUBO) matrix carries structure that can be mapped directly to circuit parameters, and the device carries calibration data that can be used to decide which logical qubits should be placed on which physical qubits. \Cref{ch:nisq} develops algorithms that exploit both kinds of structure.
+
+The fourth is a \emph{trust} gap. Quantum processors are accessed through shared clouds; error-correcting codes are public; and the classical infrastructure that transports jobs, calibration data and results will itself be attacked by future quantum computers. Fault-tolerant quantum computing is usually analysed against a benign noise model, but a co-located adversary who can inject faults into a shared device is a qualitatively different threat, and a fixed public encoder is a fixed target. At the same time, the cryptography protecting the classical side of the stack must migrate to the post-quantum standards finalized by NIST in 2024. \Cref{ch:qec,ch:pqc} address both sides of this gap, and \cref{ch:synthesis} sits between them by asking what fault-tolerant circuits and end-to-end quantum simulations will actually cost.
+
+\section{Thesis Statement and Research Questions}\label{sec:intro:thesis}
+
+\begin{quote}
+Useful quantum computation in the coming decade will be delivered not by a quantum processor alone but by a co-designed stack in which classical high-performance computing surrounds the QPU at every layer: GPU-accelerated simulation to develop, verify and calibrate circuits at scales the hardware cannot yet reach; structured, vectorized data encodings that make the classical--quantum data interface efficient and learnable; hardware-aware algorithm design that replaces black-box variational optimization with structure derived from the problem and the device; AI- and HPC-driven synthesis that compiles toward fault-tolerant resource budgets; and security-aware error correction and post-quantum cryptography so that the same stack can be trusted when it runs on shared cloud hardware in the post-quantum era.
+\end{quote}
+
+The dissertation is organized around five research questions, one per layer of the stack, which are answered in \cref{ch:qgear,ch:qml,ch:nisq,ch:synthesis,ch:qec,ch:pqc} and revisited in \cref{ch:conclusion}.
+
+\begin{description}[style=nextline,leftmargin=1.5em]
+\item[RQ1 (Scale).] How far can classical HPC push exact circuit simulation, and how do we make that capability usable without rewriting quantum programs?
+\item[RQ2 (Data).] How should classical data enter and leave a quantum processor so that learning models are shot-efficient, hardware-compatible and trainable?
+\item[RQ3 (Noise).] How can optimization algorithms on noisy intermediate-scale quantum (NISQ) devices exploit problem and hardware structure instead of black-box parameter search?
+\item[RQ4 (Synthesis).] Can learned, HPC-scale synthesis produce circuits that respect fault-tolerant resource budgets, and what does honest cost accounting say about end-to-end quantum advantage?
+\item[RQ5 (Trust).] How do we make error-corrected computation on shared cloud QPUs auditable and secure, and how does that connect to post-quantum cryptography standards?
+\end{description}
+
+\Cref{fig:intro:stack} shows the five layers, the chapter that treats each, and the flow of artifacts between them: simulation results and containers from the bottom layer feed every layer above it; hardware-aware compilation techniques from the encoding and algorithm layers feed the synthesis layer; and the randomness and key-management services of the security layer are consumed by the error-correction audit. The diagram is deliberately not a hierarchy with the QPU on top. The QPU is in the middle, and the classical layers wrap around it.
+
+% alt: A block diagram with a quantum processor in the centre surrounded by five concentric classical layers, each labelled with a research question and the chapter that addresses it, and arrows showing that simulation artifacts flow upward while randomness and keys flow from the security layer to error correction.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.35cm,
+  layer/.style={draw,rounded corners=4pt,text width=10.2cm,align=center,font=\small\linespread{1}\selectfont,inner ysep=6pt},
+  arr/.style={-{Stealth[length=2mm]},thick}]
+  \node[layer,fill=cbGray!12] (L5) {\textbf{Trust}: security-aware QEC audit and post-quantum cryptography\\ {\footnotesize RQ5 --- \Cref{ch:qec,ch:pqc}}};
+  \node[layer,fill=cbPurple!15,below=of L5] (L4) {\textbf{Synthesis}: learned circuit synthesis toward fault-tolerant budgets; honest cost accounting\\ {\footnotesize RQ4 --- \Cref{ch:synthesis}}};
+  \node[layer,fill=cbGreen!15,below=of L4] (L3) {\textbf{Algorithms}: hardware-aware optimization on noisy devices\\ {\footnotesize RQ3 --- \Cref{ch:nisq}}};
+  \node[layer,fill=cbOrange!18,below=of L3] (L2) {\textbf{Data}: vectorized encodings for quantum learning\\ {\footnotesize RQ2 --- \Cref{ch:qml}}};
+  \node[layer,fill=cbBlue!15,below=of L2] (L1) {\textbf{Scale}: GPU-accelerated circuit simulation on HPC\\ {\footnotesize RQ1 --- \Cref{ch:qgear}}};
+  \node[draw,thick,circle,fill=white,minimum size=1.4cm,font=\small\bfseries,right=1.3cm of L3] (qpu) {QPU};
+  \draw[arr] (L1.east) -- ++(0.5,0) |- (qpu.south);
+  \draw[arr,<->] (qpu.west) -- (L3.east);
+  \draw[arr] (L2.east) -- ++(0.5,0) -- (qpu.south west);
+  \draw[arr] (qpu.north) |- (L5.east);
+  \draw[arr,cbBlue] (L1.west) -- ++(-0.5,0) |- node[pos=0.25,rotate=90,anchor=south,font=\footnotesize] {simulation, containers} (L4.west);
+  \draw[arr,cbGray,dashed] (L5.west) -- ++(-1.0,0) |- node[pos=0.25,rotate=90,anchor=north,font=\footnotesize] {seeds, keys} (L4.west);
+\end{tikzpicture}
+\caption{The HPC-surrounded quantum stack studied in this dissertation. Each classical layer answers one research question and is treated in one or two chapters; artifacts flow between layers as indicated. Schematic.}
+\label{fig:intro:stack}
+\end{figure}
+
+\section{Contributions}\label{sec:intro:contributions}
+
+The dissertation makes the following contributions, grouped by research question. Each contribution corresponds to a peer-reviewed publication, a preprint or a released software artifact by the candidate; the mapping is summarized in \cref{tab:intro:contributions}.
+
+\paragraph{Scale (RQ1).}
+\qgear{} is a framework that transforms \qiskit{} circuits gate-by-gate into \cudaq{} kernels through a compact three-tensor encoding, and packages the resulting simulator as containers for Slurm-managed GPU systems. On the Perlmutter supercomputer it simulates circuits of up to 42 qubits on 1,024 NVIDIA A100 GPUs, achieves roughly two orders of magnitude speed-up over a 128-core CPU node and roughly an order of magnitude over existing GPU simulators, and does so without requiring users to rewrite their circuits~\cite{guo2025qgear}.
+
+\paragraph{Data (RQ2).}
+Four learning primitives are built on vectorized address--data encodings: \qpie{}, a non-sequential hybrid network with parallel information exchange between classical and quantum branches~\cite{guo2025qpie}; \vqt{}, a quantum transformer whose attention is computed by a vectorized quantum dot product with a learnable nonlinear encoder~\cite{guo2025vqt}; \shardq{}, a hardware-aware circuit cutting-and-knitting compiler that reduces encoding error on IBM Heron devices by roughly 15\%~\cite{guo2025shardq}; and \nnqa{}, which compiles trained polynomial networks into exact quantum arithmetic that reaches over 99.5\% accuracy for polynomials up to degree 35 on superconducting and trapped-ion hardware~\cite{guo2026nnqa}.
+
+\paragraph{Noise (RQ3).}
+\deal{} (direct entanglement ansatz learning) replaces black-box QAOA parameter optimization with a direct mapping from QUBO coefficients to circuit angles, a dynamic physical-qubit mapping driven by device calibration, and an adaptive digital zero-noise extrapolation, improving the ground-state success rate of 20-qubit, 10-layer circuits on IBM Heron processors by up to 14\%~\cite{guo2025deal}. \qawa{} (quantum approximate walk algorithm) introduces a classical-data-traceable oracle whose depth grows linearly in the number of qubits and whose outputs are interpretable through polynomial-time classical post-processing, and demonstrates portfolio optimization with a measurable advantage above the noise floor on a 156-qubit device~\cite{guo2025qawa}.
+
+\paragraph{Synthesis (RQ4).}
+\rubriq{} formulates fault-tolerant circuit synthesis as rubric-guided reinforcement learning of a code-generating language model, with GPU-accelerated simulation inside the reward loop on Perlmutter, and achieves a 3.31$\times$ mean T-gate compression while keeping hardware-constraint violations below 1\%~\cite{guo2026rubriq}. A companion study quantifies the measurement and reload costs of direct quantum simulation of nonlinear wave equations with a unified cost-and-error model, and shows that the per-step quantum cost overtakes the classical cost as the grid grows, thereby identifying the coherent nonlinear update as the target any end-to-end advantage must meet~\cite{guo2026nonlinearwaves}.
+
+\paragraph{Trust (RQ5).}
+A bounded cloud fault model and the notion of accepted logical disturbance make it possible to audit the exposure of a fixed public encoder to a co-located fault-injection adversary; a polynomial-cost seeded Clifford ensemble reduces the mean accepted logical disturbance of eight-qubit encoders from 0.150 under a seed-aware adversary to 0.020 under a seed-blind one, an 86.7\% reduction attributable to rejection, while the fixed \code{5}{1}{3} code corrects every tested weight-one fault~\cite{guo2026qecaudit}. The Light Rider QPC SDK, a post-quantum cryptographic module designed to the FIPS 140-3 requirements with a module-search capability, provides the validated randomness and key-establishment services that the audit and the rest of the stack consume~\cite{guo2026lightriderqpc}.
+
+\Cref{tab:intro:contributions} lists the publications and artifacts that underlie each chapter. The candidate is the first author of every paper and the primary developer of every software artifact; individual authorship statements appear under each chapter heading, following the Graduate School's requirements for dissertations that incorporate published work.
+
+\begin{table}[htbp]
+\caption{Publications and artifacts underlying the dissertation, by chapter and research question. Venues are given as of September 2026; preprints are listed with their arXiv identifiers.}
+\label{tab:intro:contributions}
+\centering
+\singlespacing\small
+\begin{tabular}{@{}llp{6.0cm}l@{}}
+\toprule
+Chapter & RQ & Work & Status \\
+\midrule
+\Cref{ch:qgear} & RQ1 & \qgear: Qiskit-to-\cudaq{} simulation framework~\cite{guo2025qgear} & ACM ICPP 2025 \\
+\Cref{ch:qml} & RQ2 & \qpie: hybrid network with transfer learning~\cite{guo2025qpie} & Quantum Sci.\ Technol.\ 2025 \\
+ & RQ2 & \vqt: vectorized attention for quantum transformers~\cite{guo2025vqt} & AAAI Symposium Series 2025 \\
+ & RQ2 & \shardq: circuit partitioning and reintegration~\cite{guo2025shardq} & arXiv:2511.05492 \\
+ & RQ2 & \nnqa: neural-native quantum arithmetic~\cite{guo2026nnqa} & arXiv:2603.27297 \\
+\Cref{ch:nisq} & RQ3 & \deal: direct entanglement ansatz learning with ZNE~\cite{guo2025deal} & IEEE QCE 2025 \\
+ & RQ3 & \qawa: quantum approximate walk algorithm~\cite{guo2025qawa} & arXiv:2511.07676 \\
+\Cref{ch:synthesis} & RQ4 & \rubriq: rubric-guided GRPO for circuit synthesis~\cite{guo2026rubriq} & arXiv:2607.07554 (under review) \\
+ & RQ4 & Measurement and reload costs in nonlinear-wave simulation~\cite{guo2026nonlinearwaves} & arXiv:2608.21647 \\
+\Cref{ch:qec} & RQ5 & Auditing structured randomness for QEC~\cite{guo2026qecaudit} & arXiv:2608.26600 \\
+\Cref{ch:pqc} & RQ5 & Light Rider QPC SDK (FIPS 140-3 PQC module)~\cite{guo2026lightriderqpc} & Zenodo software release 2026 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Methodology}\label{sec:intro:method}
+
+Three methodological commitments run through the dissertation. The first is that every algorithmic claim is tested on real quantum hardware as well as in simulation. The devices used include IBM's Heron-generation superconducting processors (\texttt{ibm\_torino}, \texttt{ibm\_marrakesh}, \texttt{ibm\_kingston}, \texttt{ibm\_pittsburgh}, \texttt{ibm\_boston}), the IBM Nighthawk processor \texttt{ibm\_miami}, and IonQ's Aria-1 and Forte-1 trapped-ion systems. Hardware results are always accompanied by the ideal-simulator baseline so that the effect of noise can be separated from the effect of the method. The second commitment is that the classical HPC resources are treated as first-class experimental apparatus. Every chapter reports which GPUs, how many nodes, and which containers and software versions were used, and \cref{app:qgear,app:repro} document the environments and artifacts in enough detail to reproduce them. The third commitment is honest accounting. Where a method does not deliver an advantage, as in the nonlinear-wave study of \cref{ch:synthesis}, the negative result is reported with the same care as the positive ones, because knowing where the crossover lies is itself a research contribution.
+
+\section{Scope and Limitations}\label{sec:intro:scope}
+
+The dissertation is about the software and systems layers of quantum computing; it does not contribute to device physics, control electronics or the design of new error-correcting codes. Its hardware experiments are limited to the qubit counts (up to 36 in the largest trapped-ion run) and depths (a few hundred two-qubit gates) that current cloud-accessible devices support with usable fidelity; its simulation experiments are limited by the memory of the largest GPU allocation available (1,024 A100 GPUs), which caps exact state-vector simulation at roughly 42--44 qubits. The security analysis of \cref{ch:qec} uses a bounded fault model with weight-one Pauli faults and small codes; extending it to correlated faults and to codes at the scale of practical fault tolerance is future work. The cryptographic module of \cref{ch:pqc} is designed to the FIPS 140-3 requirements but its formal validation status is outside the scope of the dissertation. These limitations are discussed further in each chapter and consolidated in \cref{ch:conclusion}.
+
+\section{Organization of the Dissertation}\label{sec:intro:organization}
+
+\Cref{ch:background} provides the background shared by all later chapters: quantum computation fundamentals and native gate sets, classical simulation and the HPC context, NISQ noise and mitigation, variational algorithms and QAOA, data encodings, circuit cutting, quantum error correction, post-quantum cryptography and standards, and language-model-based synthesis. It closes by positioning the dissertation against the literature for each research question. \Cref{ch:qgear} presents \qgear{} and answers RQ1. \Cref{ch:qml} presents \qpie, \vqt, \shardq{} and \nnqa{} and answers RQ2. \Cref{ch:nisq} presents \deal{} and \qawa{} and answers RQ3. \Cref{ch:synthesis} presents \rubriq{} and the nonlinear-wave cost study and answers RQ4. \Cref{ch:qec} presents the QEC randomness audit and \cref{ch:pqc} presents the post-quantum cryptographic module and its integration with the audit; together they answer RQ5. \Cref{ch:conclusion} returns to the five research questions, states what has been established, and outlines the research program that follows. Two appendices document the \qgear{} configuration and the research artifacts and reproducibility information.

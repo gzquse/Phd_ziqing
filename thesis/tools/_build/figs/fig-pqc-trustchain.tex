@@ -1,0 +1,125 @@
+\documentclass[border=4pt,varwidth=6in]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{courier}
+\usepackage{setspace}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[font={singlespacing,normalsize},labelfont=bf,labelsep=period,justification=justified,singlelinecheck=false]{caption}
+\usepackage{subcaption}
+\usepackage{booktabs,multirow,longtable,threeparttable,array,tabularx}
+\usepackage{enumitem}
+%% preamble.tex — packages and macros shared by all chapters
+% Engine compatibility: biber writes UTF-8 into the .bbl. Under pdfTeX, inputenc maps
+% characters outside Latin-1 to T1 glyphs; under XeTeX (tectonic) they would be silently
+% dropped from the 8-bit Times fonts, so map them explicitly.
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{newunicodechar}
+  \newunicodechar{č}{\v{c}}\newunicodechar{Č}{\v{C}}\newunicodechar{ě}{\v{e}}\newunicodechar{ř}{\v{r}}
+  \newunicodechar{š}{\v{s}}\newunicodechar{Š}{\v{S}}\newunicodechar{ž}{\v{z}}\newunicodechar{Ž}{\v{Z}}
+  \newunicodechar{Ł}{\L{}}\newunicodechar{ł}{\l{}}\newunicodechar{ń}{\'n}\newunicodechar{ś}{\'s}
+  \newunicodechar{ć}{\'c}\newunicodechar{ż}{\.z}\newunicodechar{ź}{\'z}\newunicodechar{ę}{\k{e}}\newunicodechar{ą}{\k{a}}
+  \newunicodechar{ő}{\H{o}}\newunicodechar{ű}{\H{u}}\newunicodechar{ğ}{\u{g}}\newunicodechar{ş}{\c{s}}\newunicodechar{ı}{\i}
+\fi
+\usepackage{physics}          % \ket, \bra, \expval, \dd, \abs, \norm
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{siunitx}
+\sisetup{detect-all,per-mode=symbol,range-phrase=--,range-units=single}
+\usepackage{tikz}
+\usetikzlibrary{quantikz2}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit,backgrounds,matrix,decorations.pathreplacing}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots,fillbetween}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\SetAlFnt{\singlespacing\small}
+% cleveref is loaded by ttuthesis.cls *before* algorithm2e, so its algorithm2e alias is never
+% installed; name the algocf label type explicitly so \cref{alg:...} prints "Algorithm N".
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\footnotesize\singlespacing,breaklines=true,columns=fullflexible,
+        keepspaces=true,frame=single,framerule=0.3pt,xleftmargin=1em,showstringspaces=false,
+        commentstyle=\itshape\color{black!60},keywordstyle=\bfseries}
+\lstdefinelanguage{qasm}{morekeywords={OPENQASM,include,qubit,bit,h,cx,rz,ry,measure,reset,barrier},sensitive=true,morecomment=[l]{//}}
+
+% Theorem-like environments (numbered per chapter, Arabic chapter number)
+
+% Color-blind-safe palette for plots (also varies markers/line styles: TTU accessibility rule)
+\definecolor{cbBlue}{HTML}{0072B2}
+\definecolor{cbOrange}{HTML}{E69F00}
+\definecolor{cbGreen}{HTML}{009E73}
+\definecolor{cbRed}{HTML}{D55E00}
+\definecolor{cbPurple}{HTML}{CC79A7}
+\definecolor{cbSky}{HTML}{56B4E9}
+\definecolor{cbGray}{HTML}{555555}
+\pgfplotscreateplotcyclelist{ttu}{%
+  {cbBlue,mark=*,solid},{cbOrange,mark=square*,dashed},{cbGreen,mark=triangle*,dotted},
+  {cbRed,mark=diamond*,dashdotted},{cbPurple,mark=pentagon*,densely dashed},{cbGray,mark=o,loosely dotted}}
+\pgfplotsset{every axis/.append style={cycle list name=ttu,width=0.8\linewidth,height=0.5\linewidth,
+  tick label style={font=\small},label style={font=\small},legend style={font=\footnotesize,cells={anchor=west}},
+  grid=major,grid style={black!12}}}
+
+% Domain macros
+\newcommand{\qgear}{Q-GEAR}
+\newcommand{\deal}{DEAL}
+\newcommand{\qawa}{QAWA}
+\newcommand{\qpie}{QPIE}
+\newcommand{\vqt}{VQT}
+\newcommand{\shardq}{ShardQ}
+\newcommand{\nnqa}{NNQA}
+\newcommand{\rubriq}{RubriQ}
+\newcommand{\cudaq}{CUDA-Q}
+\newcommand{\qiskit}{Qiskit}
+\newcommand{\qcrank}{QCrank}
+\newcommand{\bigO}[1]{\mathcal{O}\!\left(#1\right)}
+\newcommand{\Hcost}{H_C}
+\newcommand{\Hmix}{H_M}
+\newcommand{\code}[3]{[[#1,#2,#3]]}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+% \Tr provided by physics
+\DeclareMathOperator{\poly}{poly}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\todo}[1]{{\color{red!70!black}\textbf{[TODO: #1]}}}
+\providecommand{\cref}[1]{#1}
+\providecommand{\Cref}[1]{#1}
+\providecommand{\labelcref}[1]{#1}
+\providecommand{\ref}[1]{#1}
+\providecommand{\cite}[1]{[#1]}
+\begin{document}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\footnotesize,
+  life/.style={draw,rounded corners=2pt,fill=cbBlue!12,align=center,minimum width=24mm,minimum height=8mm},
+  msg/.style={-{Latex[length=2mm]},thick},
+  self/.style={-{Latex[length=2mm]},thick,rounded corners=2pt},
+  lbl/.style={font=\scriptsize,align=center,fill=white,inner sep=1pt}]
+  \def\yTop{0}
+  \node[life] (M) at (0,\yTop) {QPC module};
+  \node[life] (C) at (42mm,\yTop) {Audit client};
+  \node[life] (P) at (84mm,\yTop) {Cloud provider};
+  \node[life] (Q) at (122mm,\yTop) {QPU};
+  \foreach \n in {M,C,P,Q}{\draw[cbGray,dashed] (\n.south) -- ++(0,-96mm);}
+  \draw[msg] (C.south|-0,-8mm) -- (M.south|-0,-8mm) node[lbl,midway,above]{1. self-tests; instantiate DRBG};
+  \draw[msg] (M.south|-0,-16mm) -- (C.south|-0,-16mm) node[lbl,midway,above]{2. $s \leftarrow$ Generate(256 bits)};
+  \draw[self] (C.south|-0,-22mm) -- ++(10mm,0) -- ++(0,-6mm) -- ++(-10mm,0);
+  \node[lbl,anchor=west] at (53mm,-25mm) {3. $E_s=\mathrm{HSE}(s,d)$; $J=E_s\circ$ logical circuit;\\ $c=\mathrm{SHA3}(s\,\|\,r)$};
+  \draw[msg] (C.south|-0,-36mm) -- (M.south|-0,-36mm) node[lbl,midway,above]{4. $\sigma_C \leftarrow$ ML-DSA.Sign$(J\,\|\,c)$};
+  \draw[msg] (C.south|-0,-46mm) -- (P.south|-0,-46mm) node[lbl,midway,above]{5. hybrid X25519 + ML-KEM-768 $\Rightarrow K$;\\ AES-256-GCM$_K(J, c, \sigma_C)$};
+  \draw[msg] (P.south|-0,-56mm) -- (Q.south|-0,-56mm) node[lbl,midway,above]{6. compile, execute $J$};
+  \draw[msg] (Q.south|-0,-64mm) -- (P.south|-0,-64mm) node[lbl,midway,above]{7. counts, syndromes $R$};
+  \draw[msg] (P.south|-0,-74mm) -- (C.south|-0,-74mm) node[lbl,midway,above]{8. $R$, calibration snapshot cal,\\ $\sigma_P \leftarrow$ ML-DSA.Sign$(H(J)\,\|\,R\,\|\,\mathrm{cal})$};
+  \draw[msg] (C.south|-0,-84mm) -- (M.south|-0,-84mm) node[lbl,midway,above]{9a. Verify$(\sigma_P)$};
+  \draw[self] (C.south|-0,-88mm) -- ++(10mm,0) -- ++(0,-6mm) -- ++(-10mm,0);
+  \node[lbl,anchor=west] at (53mm,-91mm) {9b. reveal $(s,r)$; recompute $E_s$;\\ audit accepted logical disturbance};
+\end{tikzpicture}
+\end{figure}
+\end{document}

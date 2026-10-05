@@ -1,0 +1,119 @@
+\documentclass[border=4pt,varwidth=6in]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage[scaled=0.92]{helvet}
+\usepackage{courier}
+\usepackage{setspace}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[font={singlespacing,normalsize},labelfont=bf,labelsep=period,justification=justified,singlelinecheck=false]{caption}
+\usepackage{subcaption}
+\usepackage{booktabs,multirow,longtable,threeparttable,array,tabularx}
+\usepackage{enumitem}
+%% preamble.tex — packages and macros shared by all chapters
+% Engine compatibility: biber writes UTF-8 into the .bbl. Under pdfTeX, inputenc maps
+% characters outside Latin-1 to T1 glyphs; under XeTeX (tectonic) they would be silently
+% dropped from the 8-bit Times fonts, so map them explicitly.
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{newunicodechar}
+  \newunicodechar{č}{\v{c}}\newunicodechar{Č}{\v{C}}\newunicodechar{ě}{\v{e}}\newunicodechar{ř}{\v{r}}
+  \newunicodechar{š}{\v{s}}\newunicodechar{Š}{\v{S}}\newunicodechar{ž}{\v{z}}\newunicodechar{Ž}{\v{Z}}
+  \newunicodechar{Ł}{\L{}}\newunicodechar{ł}{\l{}}\newunicodechar{ń}{\'n}\newunicodechar{ś}{\'s}
+  \newunicodechar{ć}{\'c}\newunicodechar{ż}{\.z}\newunicodechar{ź}{\'z}\newunicodechar{ę}{\k{e}}\newunicodechar{ą}{\k{a}}
+  \newunicodechar{ő}{\H{o}}\newunicodechar{ű}{\H{u}}\newunicodechar{ğ}{\u{g}}\newunicodechar{ş}{\c{s}}\newunicodechar{ı}{\i}
+\fi
+\usepackage{physics}          % \ket, \bra, \expval, \dd, \abs, \norm
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{siunitx}
+\sisetup{detect-all,per-mode=symbol,range-phrase=--,range-units=single}
+\usepackage{tikz}
+\usetikzlibrary{quantikz2}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,fit,backgrounds,matrix,decorations.pathreplacing}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots,fillbetween}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\SetAlFnt{\singlespacing\small}
+% cleveref is loaded by ttuthesis.cls *before* algorithm2e, so its algorithm2e alias is never
+% installed; name the algocf label type explicitly so \cref{alg:...} prints "Algorithm N".
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\footnotesize\singlespacing,breaklines=true,columns=fullflexible,
+        keepspaces=true,frame=single,framerule=0.3pt,xleftmargin=1em,showstringspaces=false,
+        commentstyle=\itshape\color{black!60},keywordstyle=\bfseries}
+\lstdefinelanguage{qasm}{morekeywords={OPENQASM,include,qubit,bit,h,cx,rz,ry,measure,reset,barrier},sensitive=true,morecomment=[l]{//}}
+
+% Theorem-like environments (numbered per chapter, Arabic chapter number)
+
+% Color-blind-safe palette for plots (also varies markers/line styles: TTU accessibility rule)
+\definecolor{cbBlue}{HTML}{0072B2}
+\definecolor{cbOrange}{HTML}{E69F00}
+\definecolor{cbGreen}{HTML}{009E73}
+\definecolor{cbRed}{HTML}{D55E00}
+\definecolor{cbPurple}{HTML}{CC79A7}
+\definecolor{cbSky}{HTML}{56B4E9}
+\definecolor{cbGray}{HTML}{555555}
+\pgfplotscreateplotcyclelist{ttu}{%
+  {cbBlue,mark=*,solid},{cbOrange,mark=square*,dashed},{cbGreen,mark=triangle*,dotted},
+  {cbRed,mark=diamond*,dashdotted},{cbPurple,mark=pentagon*,densely dashed},{cbGray,mark=o,loosely dotted}}
+\pgfplotsset{every axis/.append style={cycle list name=ttu,width=0.8\linewidth,height=0.5\linewidth,
+  tick label style={font=\small},label style={font=\small},legend style={font=\footnotesize,cells={anchor=west}},
+  grid=major,grid style={black!12}}}
+
+% Domain macros
+\newcommand{\qgear}{Q-GEAR}
+\newcommand{\deal}{DEAL}
+\newcommand{\qawa}{QAWA}
+\newcommand{\qpie}{QPIE}
+\newcommand{\vqt}{VQT}
+\newcommand{\shardq}{ShardQ}
+\newcommand{\nnqa}{NNQA}
+\newcommand{\rubriq}{RubriQ}
+\newcommand{\cudaq}{CUDA-Q}
+\newcommand{\qiskit}{Qiskit}
+\newcommand{\qcrank}{QCrank}
+\newcommand{\bigO}[1]{\mathcal{O}\!\left(#1\right)}
+\newcommand{\Hcost}{H_C}
+\newcommand{\Hmix}{H_M}
+\newcommand{\code}[3]{[[#1,#2,#3]]}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+% \Tr provided by physics
+\DeclareMathOperator{\poly}{poly}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\newcommand{\todo}[1]{{\color{red!70!black}\textbf{[TODO: #1]}}}
+\providecommand{\cref}[1]{#1}
+\providecommand{\Cref}[1]{#1}
+\providecommand{\labelcref}[1]{#1}
+\providecommand{\ref}[1]{#1}
+\providecommand{\cite}[1]{[#1]}
+\begin{document}
+\begin{algorithm}[H]
+\KwIn{Code parameters $(n,k{=}1)$; HSE depth $d$; number of seeds $M$; fault set $\mathcal{F}$ (all $3n$ weight-one Paulis); adversary mode $\in\{\textsc{adaptive},\textsc{committed}\}$; validated DRBG}
+\KwOut{Mean accepted logical disturbance $\bar\Delta$; fraction $\phi_{\mathrm{KL}}$ of encoders satisfying Equation (7.2)}
+$\Sigma\leftarrow 0$; $\Phi\leftarrow 0$\;
+\lIf{mode $=$ \textsc{committed}}{adversary commits to $P^{\star}\in\mathcal{F}$ before any seed is drawn}
+\For{$m\leftarrow 1$ \KwTo $M$}{
+  $s_m\leftarrow\textsc{DRBG.Generate}()$ \tcp*{SP 800-90A instance inside a FIPS 140-3 module}
+  $E_m\leftarrow\textsc{HSE}(s_m,d)$; derive $\mathcal{S}_m$, $\bar X_m$, $\bar Z_m$ by tableau conjugation \tcp*{Equations (7.3) and (7.8)}
+  encode $\ket{\psi}\ket{0^{\,n-1}}\mapsto E_m\big(\ket{\psi}\ket{0^{\,n-1}}\big)$ on the QPU\;
+  \eIf{mode $=$ \textsc{adaptive}}{
+    adversary learns $E_m$ and injects $P_m\leftarrow\argmax_{P\in\mathcal{F}}\Delta(E_m,P)$\;
+  }{
+    adversary injects $P_m\leftarrow P^{\star}$\;
+  }
+  measure the syndrome $\sigma(P_m)$ against $\mathcal{S}_m$; \textbf{accept} iff $\sigma=0$, otherwise \textbf{reject}\;
+  $\Sigma\leftarrow\Sigma+\Delta(E_m,P_m)$ \tcp*{Equation (7.4); zero on rejection}
+  $\Phi\leftarrow\Phi+\mathbb{1}\big[E_m\text{ satisfies Equation (7.2) for }\mathcal{F}\big]$\;
+  append $(m,\ \mathrm{id}(s_m),\ \sigma(P_m),\ \Delta(E_m,P_m))$ to the signed audit log\;
+}
+\Return $\bar\Delta\leftarrow\Sigma/M$, $\phi_{\mathrm{KL}}\leftarrow\Phi/M$\;
+\end{algorithm}
+\end{document}

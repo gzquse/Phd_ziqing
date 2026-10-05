@@ -17,7 +17,6 @@
   publisher = {ACM},
   address   = {San Diego, CA, USA},
   doi       = {10.1145/3754598.3754608},
-  note      = {Also appears in ICPP Workshops '25 Proceedings, pp. 200--209, DOI 10.1145/3750720.3757302. arXiv:2504.03967}, % TODO: confirm which DOI is canonical
   eprint    = {2504.03967},
   archivePrefix = {arXiv},
   primaryClass  = {quant-ph},
@@ -49,7 +48,6 @@
   archivePrefix = {arXiv},
   primaryClass  = {quant-ph},
   url       = {https://doi.org/10.1088/2058-9565/ade89f},
-  note      = {Published online 3 July 2025}
 }
 
 @inproceedings{guo2025deal,
@@ -77,7 +75,6 @@
   pages     = {350--357},
   publisher = {AAAI Press},
   doi       = {10.1609/aaaiss.v7i1.36905},
-  note      = {First AAAI Symposium on Quantum Information \& Machine Learning (QIML), AAAI Fall Symposium Series 2025. arXiv:2508.18464},
   eprint    = {2508.18464},
   archivePrefix = {arXiv},
   primaryClass  = {quant-ph},
@@ -94,7 +91,6 @@
   primaryClass  = {quant-ph},
   doi       = {10.48550/arXiv.2511.05492},
   url       = {https://arxiv.org/abs/2511.05492},
-  note      = {ShardQ: SparseCut + MPS compilation + global knitting; about 15 percent error reduction on IBM Heron QPUs} % TODO: check for published version
 }
 
 @misc{guo2025qawa,
@@ -131,7 +127,6 @@
   primaryClass  = {quant-ph},
   doi       = {10.48550/arXiv.2607.07554},
   url       = {https://arxiv.org/abs/2607.07554},
-  note      = {Under review at npj Quantum Information (Research Square preprint DOI 10.21203/rs.3.rs-10309063/v1, 3 Aug 2026). Software: Zenodo DOI 10.5281/zenodo.21284556} % TODO: final venue
 }
 
 @misc{guo2026nonlinearwaves,
@@ -144,7 +139,6 @@
   primaryClass  = {quant-ph},
   doi       = {10.48550/arXiv.2608.21647},
   url       = {https://arxiv.org/abs/2608.21647},
-  note      = {Code/data: SplitStepQUDE, Zenodo DOI 10.5281/zenodo.21245905} % TODO: venue
 }
 
 @misc{guo2026qecaudit,
@@ -161,14 +155,13 @@
 
 @software{guo2026lightriderqpc,
   author    = {Guo, Ziqing},
-  title     = {Light Rider Inc. {QPC} {SDK}},
+  title     = {{Light Rider Inc.} {QPC SDK}},
   year      = {2026},
   month     = aug,
   version   = {1.0.0},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.21895102},
   url       = {https://doi.org/10.5281/zenodo.21895102},
-  note      = {Post-quantum cryptography FIPS 140-3 module with module search capability; CC-BY-4.0}
 }
 
 @software{guo2026rubriqsoftware,
@@ -178,7 +171,8 @@
   month     = jul,
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.21284556},
-  url       = {https://github.com/gzquse/rubriq-artifact}
+  url       = {https://github.com/gzquse/rubriq-artifact},
+  options   = {url=true}
 }
 
 @software{guo2026splitstepqude,
@@ -192,10 +186,10 @@
 
 @software{guo2025qgearsoftware,
   author    = {Guo, Ziqing},
-  title     = {qgear: Qiskit-to-{CUDA-Q} Quantum Accelerator for {HPC-QPU} Hybrid Regime},
+  title     = {{qgear}: Qiskit-to-{CUDA-Q} Quantum Accelerator for {HPC-QPU} Hybrid Regime},
   year      = {2025},
   url       = {https://github.com/gzquse/qgear},
-  note      = {Apache-2.0}
+  options   = {url=true}
 }
 
 % --- Possibly the same author (unverified) -----------------------------------
@@ -209,7 +203,6 @@
   archivePrefix = {arXiv},
   primaryClass  = {cs.CR},
   url       = {https://arxiv.org/abs/1812.08603},
-  note      = {Identity uncertain: may be a different Ziqing Guo (BUPT)} % TODO: verify
 }
 
 % ---------------------------------------------------------------------------
@@ -289,13 +282,15 @@
 }
 
 @inproceedings{stephey2022podman,
-  author    = {Stephey, Laurie and Younge, Andrew and Canon, Shane and others},
+  author    = {Stephey, Laurie and Canon, Shane and Gaur, Aditi and Fulton, Daniel and Younge, Andrew J.},
   title     = {Scaling {Podman} on {Perlmutter}: Embracing a Community-Supported Container Ecosystem},
   booktitle = {2022 IEEE/ACM 4th International Workshop on Containers and New Orchestration Paradigms for Isolated Environments in HPC (CANOPIE-HPC)},
   year      = {2022},
-  pages     = {41--50},
+  month     = {11},
+  address   = {Dallas, TX, USA},
+  pages     = {25--35},
   publisher = {IEEE},
-  doi       = {10.1109/CANOPIE-HPC56864.2022.00010} % TODO: verify DOI and full author list
+  doi       = {10.1109/CANOPIE-HPC56864.2022.00008}
 }
 
 @article{choquette2021a100,
@@ -318,13 +313,16 @@
   primaryClass  = {quant-ph}
 }
 
-@misc{perezgarcia2006mps,
+@article{perezgarcia2006mps,
   author    = {Perez-Garcia, David and Verstraete, Frank and Wolf, Michael M. and Cirac, J. Ignacio},
   title     = {Matrix Product State Representations},
-  year      = {2006},
+  journal   = {Quantum Information and Computation},
+  volume    = {7},
+  number    = {5--6},
+  pages     = {401--430},
+  year      = {2007},
   eprint    = {quant-ph/0608197},
-  archivePrefix = {arXiv},
-  note      = {Quantum Inf. Comput. 7, 401 (2007)}
+  archivePrefix = {arXiv}
 }
 
 % ---------------------------------------------------------------------------
@@ -390,9 +388,10 @@
   author    = {Sachdeva, Natasha and Hartnett, Gavin S. and Maity, Smarak and Marsh, Samuel and Wang, Yulun and Winick, Adam and Dougherty, Ryan and Canuto, Daniel and Chong, You Quan and Hush, Michael and others},
   title     = {Quantum Optimization Using a 127-Qubit Gate-Model {IBM} Quantum Computer Can Outperform Quantum Annealers for Nontrivial Binary Optimization Problems},
   year      = {2024},
-  eprint    = {2406.01743},
+  eprint    = {2406.01743v1},
   archivePrefix = {arXiv},
-  primaryClass  = {quant-ph}
+  primaryClass  = {quant-ph},
+  url       = {https://arxiv.org/abs/2406.01743v1}
 }
 
 @article{montanezbarrera2024unbalanced,
@@ -500,7 +499,6 @@
   doi       = {10.1038/s41598-024-53720-x},
   eprint    = {2301.07841},
   archivePrefix = {arXiv},
-  note      = {QCrank and QBArt encodings; Ziqing Guo is NOT an author}
 }
 
 @article{amankwah2022qpixl,
@@ -833,7 +831,7 @@
   pages     = {052328},
   year      = {2004},
   doi       = {10.1103/PhysRevA.70.052328},
-  eprint    = {quant-ph/0406025},
+  eprint    = {quant-ph/0406196},
   archivePrefix = {arXiv}
 }
 
@@ -845,7 +843,7 @@
   pages     = {307--346},
   year      = {2015},
   doi       = {10.1103/RevModPhys.87.307},
-  eprint    = {1302.4011},
+  eprint    = {1302.3428},
   archivePrefix = {arXiv}
 }
 
@@ -896,7 +894,6 @@
   doi       = {10.1137/S0097539795293172},
   eprint    = {quant-ph/9508027},
   archivePrefix = {arXiv},
-  note      = {Conference version: FOCS 1994, pp. 124--134}
 }
 
 @inproceedings{grover1996search,
@@ -1006,7 +1003,7 @@
   year      = {2009},
   pages     = {517--526},
   doi       = {10.1109/FOCS.2009.36},
-  eprint    = {0807.4994},
+  eprint    = {0807.4154},
   archivePrefix = {arXiv}
 }
 
@@ -1027,7 +1024,6 @@
   address   = {Bangalore, India},
   year      = {1984},
   pages     = {175--179},
-  note      = {Reprinted in Theoretical Computer Science 560, 7--11 (2014), doi:10.1016/j.tcs.2014.05.025}
 }
 
 % ---------------------------------------------------------------------------
@@ -1041,7 +1037,6 @@
   eprint    = {2402.03300},
   archivePrefix = {arXiv},
   primaryClass  = {cs.CL},
-  note      = {Introduces Group Relative Policy Optimization (GRPO)}
 }
 
 @misc{deepseek2025r1,
@@ -1103,7 +1098,7 @@
   volume    = {133},
   pages     = {230602},
   year      = {2024},
-  doi       = {10.1103/PhysRevLett.133.230602} % TODO: verify volume/article number and arXiv id
+  doi       = {10.1103/PhysRevLett.133.230602}
 }
 
 @book{nielsen2010qcqi,
@@ -1155,7 +1150,7 @@
 }
 
 @article{bravyi2022futuresc,
-  author    = {Bravyi, Sergey and Dial, Oliver and Gambetta, Jay M. and Gil, Dar{\'\i}o and Nazario, Zaira},
+  author    = {Bravyi, Sergey and Dial, Oliver and Gambetta, Jay M. and Gil, Dar{\'i}o and Nazario, Zaira},
   title     = {The Future of Quantum Computing with Superconducting Qubits},
   journal   = {Journal of Applied Physics},
   volume    = {132},
@@ -1266,7 +1261,7 @@
 % ---------------- Data encoding / QML ----------------
 
 @article{havlicek2019featurespaces,
-  author    = {Havl{\'\i}{\v{c}}ek, Vojt{\v{e}}ch and C{\'o}rcoles, Antonio D. and Temme, Kristan and Harrow, Aram W. and Kandala, Abhinav and Chow, Jerry M. and Gambetta, Jay M.},
+  author    = {Havl{\'i}{\v{c}}ek, Vojt{\v{e}}ch and C{\'o}rcoles, Antonio D. and Temme, Kristan and Harrow, Aram W. and Kandala, Abhinav and Chow, Jerry M. and Gambetta, Jay M.},
   title     = {Supervised Learning with Quantum-Enhanced Feature Spaces},
   journal   = {Nature},
   volume    = {567},
@@ -1472,7 +1467,6 @@
   pages   = {060302},
   year    = {2016},
   doi     = {10.1103/PhysRevA.93.060302},
-  note    = {Echoed cross-resonance gate}
 }
 
 @article{sklar1959copula,
@@ -1504,7 +1498,8 @@
   year      = {2023},
   howpublished = {GitHub repository},
   url       = {https://github.com/karpathy/nanoGPT},
-  note      = {Accessed September 2026}
+  urldate   = {2026-09},
+  options   = {url=true}
 }
 
 @techreport{francis1979brown,
@@ -1686,7 +1681,7 @@
   booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
   volume    = {35},
   year      = {2022},
-  eprint    = {2209.13007},
+  eprint    = {2209.13085},
   archivePrefix = {arXiv} % TODO: page numbers
 }
 
@@ -1880,16 +1875,50 @@
   year      = {2022},
   month     = sep,
   howpublished = {NSA Cybersecurity Advisory},
-  note      = {Updated 2024} % TODO: verify revision date
 }
 
 % --- Candidate's standardization tracker (software) -----------------------------------------
 
 @software{guo2026nisttracker,
   author    = {Guo, Ziqing},
-  title     = {quantum\_news-{NIST}: {NIST} Post-Quantum Cryptography Standardization Timeline Tracker and Quantum News Digest},
+  title     = {{quantum\_news-NIST}: {NIST} Post-Quantum Cryptography Standardization Timeline Tracker and Quantum News Digest},
   year      = {2026},
   url       = {https://github.com/gzquse/quantum_news-NIST},
-  note      = {GitHub-Actions automation; weekly change detection of the NIST PQC timeline}
+  options   = {url=true}
 }
 
+% ---------------------------------------------------------------------------
+% Added 2026-10-03 while resolving dissertation TODO markers
+% ---------------------------------------------------------------------------
+@article{smaldone2025hybridqt,
+  author  = {Smaldone, Anthony M. and Shee, Yu and Kyro, Gregory W. and Farag, Marwa H. and Chandani, Zohim and Kyoseva, Elica and Batista, Victor S.},
+  title   = {A Hybrid Transformer Architecture with a Quantized Self-Attention Mechanism Applied to Molecular Generation},
+  journal = {Journal of Chemical Theory and Computation},
+  volume  = {21},
+  number  = {10},
+  pages   = {5143--5154},
+  year    = {2025},
+  doi     = {10.1021/acs.jctc.5c00331},
+  eprint  = {2502.19214},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{abiwinanda2019braintumor,
+  author    = {Abiwinanda, N. and Hanif, M. and Hesaputra, S. T. and Handayani, A. and Mengko, T. R.},
+  title     = {Brain Tumor Classification Using Convolutional Neural Network},
+  booktitle = {World Congress on Medical Physics and Biomedical Engineering 2018, Vol.~1},
+  publisher = {Springer},
+  address   = {Singapore},
+  year      = {2019},
+  pages     = {183--189}
+}
+
+@article{perrier2022qdataset,
+  author  = {Perrier, Elija and Youssry, Akram and Ferrie, Chris},
+  title   = {{QDataSet}, Quantum Datasets for Machine Learning},
+  journal = {Scientific Data},
+  volume  = {9},
+  pages   = {582},
+  year    = {2022},
+  doi     = {10.1038/s41597-022-01639-1}
+}

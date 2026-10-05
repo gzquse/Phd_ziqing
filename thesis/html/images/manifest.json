@@ -1,0 +1,332 @@
+{
+ "alg-deal": {
+  "ext": "svg",
+  "hash": "a104f7dcaa9b744e",
+  "label": "alg:deal",
+  "method": "tectonic"
+ },
+ "alg-qec-audit": {
+  "ext": "svg",
+  "hash": "eebc3f0de9becb40",
+  "label": "alg:qec:audit",
+  "method": "tectonic"
+ },
+ "alg-qml-sparsecut": {
+  "ext": "svg",
+  "hash": "09f27d90c70d31bd",
+  "label": "alg:qml:sparsecut",
+  "method": "tectonic"
+ },
+ "alg-syn-rubriq": {
+  "ext": "svg",
+  "hash": "def5af3df5751a4d",
+  "label": "alg:syn:rubriq",
+  "method": "tectonic"
+ },
+ "fig-bg-memwall": {
+  "ext": "svg",
+  "hash": "42bf8075136d6ade",
+  "label": "fig:bg:memwall",
+  "method": "tectonic"
+ },
+ "fig-bg-noisepipeline": {
+  "ext": "svg",
+  "hash": "eb3b4a12190149ff",
+  "label": "fig:bg:noisepipeline",
+  "method": "tectonic"
+ },
+ "fig-bg-qaoa": {
+  "ext": "svg",
+  "hash": "4ecee6cf41d6108d",
+  "label": "fig:bg:qaoa",
+  "method": "tectonic"
+ },
+ "fig-bg-qcrank": {
+  "ext": "svg",
+  "hash": "bca0327587a9b976",
+  "label": "fig:bg:qcrank",
+  "method": "tectonic"
+ },
+ "fig-bg-simlandscape": {
+  "ext": "svg",
+  "hash": "e69cd479e0282772",
+  "label": "fig:bg:simlandscape",
+  "method": "tectonic"
+ },
+ "fig-bg-stack": {
+  "ext": "svg",
+  "hash": "eec13f20c04b3780",
+  "label": "fig:bg:stack",
+  "method": "tectonic"
+ },
+ "fig-intro-lifecycle": {
+  "ext": "svg",
+  "hash": "e0982d8f64c638ad",
+  "label": "fig:intro:lifecycle",
+  "method": "tectonic"
+ },
+ "fig-intro-roadmap": {
+  "ext": "svg",
+  "hash": "c1dd058a386909ed",
+  "label": "fig:intro:roadmap",
+  "method": "tectonic"
+ },
+ "fig-intro-stack": {
+  "ext": "svg",
+  "hash": "75b10ae91f03a1b9",
+  "label": "fig:intro:stack",
+  "method": "tectonic"
+ },
+ "fig-nisq-deal-ansatz": {
+  "ext": "svg",
+  "hash": "d78b16714877e30b",
+  "label": "fig:nisq:deal-ansatz",
+  "method": "tectonic"
+ },
+ "fig-nisq-deal-pipeline": {
+  "ext": "svg",
+  "hash": "b576027cb3ad3d9e",
+  "label": "fig:nisq:deal-pipeline",
+  "method": "tectonic"
+ },
+ "fig-nisq-deal-success": {
+  "ext": "svg",
+  "hash": "1702c9e0b616517b",
+  "label": "fig:nisq:deal-success",
+  "method": "tectonic"
+ },
+ "fig-nisq-qawa-kl": {
+  "ext": "svg",
+  "hash": "ad631da317cf615c",
+  "label": "fig:nisq:qawa-kl",
+  "method": "tectonic"
+ },
+ "fig-nisq-qawa-oracle": {
+  "ext": "svg",
+  "hash": "97fba8eada26985d",
+  "label": "fig:nisq:qawa-oracle",
+  "method": "tectonic"
+ },
+ "fig-nisq-qawa-pipeline": {
+  "ext": "svg",
+  "hash": "5067c64ed091983d",
+  "label": "fig:nisq:qawa-pipeline",
+  "method": "tectonic"
+ },
+ "fig-nisq-structure-sources": {
+  "ext": "svg",
+  "hash": "281509be78f5ef98",
+  "label": "fig:nisq:structure-sources",
+  "method": "tectonic"
+ },
+ "fig-pqc-hybrid": {
+  "ext": "svg",
+  "hash": "d46bd99790667e5b",
+  "label": "fig:pqc:hybrid",
+  "method": "tectonic"
+ },
+ "fig-pqc-mosca": {
+  "ext": "svg",
+  "hash": "349bdf6989ca60be",
+  "label": "fig:pqc:mosca",
+  "method": "tectonic"
+ },
+ "fig-pqc-sdk": {
+  "ext": "svg",
+  "hash": "36a571c1c733a7df",
+  "label": "fig:pqc:sdk",
+  "method": "tectonic"
+ },
+ "fig-pqc-stack": {
+  "ext": "svg",
+  "hash": "f5cde36036d3df2e",
+  "label": "fig:pqc:stack",
+  "method": "tectonic"
+ },
+ "fig-pqc-timeline": {
+  "ext": "svg",
+  "hash": "427e77892617e70e",
+  "label": "fig:pqc:timeline",
+  "method": "tectonic"
+ },
+ "fig-pqc-trustchain": {
+  "ext": "svg",
+  "hash": "69ebe7da0a2f0556",
+  "label": "fig:pqc:trustchain",
+  "method": "tectonic"
+ },
+ "fig-qec-adversaries": {
+  "ext": "svg",
+  "hash": "7018115bb1942f16",
+  "label": "fig:qec:adversaries",
+  "method": "tectonic"
+ },
+ "fig-qec-disturbance": {
+  "ext": "svg",
+  "hash": "1b172577aa9c84d1",
+  "label": "fig:qec:disturbance",
+  "method": "tectonic"
+ },
+ "fig-qec-hse": {
+  "ext": "svg",
+  "hash": "f354fc11dea3eeef",
+  "label": "fig:qec:hse",
+  "method": "tectonic"
+ },
+ "fig-qec-indicator": {
+  "ext": "svg",
+  "hash": "127cb8ec6a0e9380",
+  "label": "fig:qec:indicator",
+  "method": "tectonic"
+ },
+ "fig-qec-stim": {
+  "ext": "svg",
+  "hash": "056067afbcdd5048",
+  "label": "fig:qec:stim",
+  "method": "tectonic"
+ },
+ "fig-qec-threat": {
+  "ext": "svg",
+  "hash": "7696774d9a698666",
+  "label": "fig:qec:threat",
+  "method": "tectonic"
+ },
+ "fig-qgear-cpu-gpu": {
+  "ext": "svg",
+  "hash": "cae327e22c41ad03",
+  "label": "fig:qgear:cpu-gpu",
+  "method": "tectonic"
+ },
+ "fig-qgear-modes": {
+  "ext": "svg",
+  "hash": "c54de71ff6a58431",
+  "label": "fig:qgear:modes",
+  "method": "tectonic"
+ },
+ "fig-qgear-partition": {
+  "ext": "svg",
+  "hash": "1303457bb1841605",
+  "label": "fig:qgear:partition",
+  "method": "tectonic"
+ },
+ "fig-qgear-perlmutter": {
+  "ext": "svg",
+  "hash": "daaaa85e03e8a902",
+  "label": "fig:qgear:perlmutter",
+  "method": "tectonic"
+ },
+ "fig-qgear-pipeline": {
+  "ext": "svg",
+  "hash": "e85f123d4168ca03",
+  "label": "fig:qgear:pipeline",
+  "method": "tectonic"
+ },
+ "fig-qgear-qft": {
+  "ext": "svg",
+  "hash": "7270e55a4464a923",
+  "label": "fig:qgear:qft",
+  "method": "tectonic"
+ },
+ "fig-qgear-relation": {
+  "ext": "svg",
+  "hash": "9c5ab4e33797ef50",
+  "label": "fig:qgear:relation",
+  "method": "tectonic"
+ },
+ "fig-qgear-scaling": {
+  "ext": "svg",
+  "hash": "ea1ff4c256fccd28",
+  "label": "fig:qgear:scaling",
+  "method": "tectonic"
+ },
+ "fig-qml-nnqa-block": {
+  "ext": "svg",
+  "hash": "b37e1551578ef64d",
+  "label": "fig:qml:nnqa-block",
+  "method": "tectonic"
+ },
+ "fig-qml-nnqa-pipeline": {
+  "ext": "svg",
+  "hash": "567b74735d554985",
+  "label": "fig:qml:nnqa-pipeline",
+  "method": "tectonic"
+ },
+ "fig-qml-nnqa-resources": {
+  "ext": "svg",
+  "hash": "4ebc2777e7d6d2ae",
+  "label": "fig:qml:nnqa-resources",
+  "method": "tectonic"
+ },
+ "fig-qml-overview": {
+  "ext": "svg",
+  "hash": "3f250c8eff3e2f22",
+  "label": "fig:qml:overview",
+  "method": "tectonic"
+ },
+ "fig-qml-qpie": {
+  "ext": "svg",
+  "hash": "43da5282c39c0a13",
+  "label": "fig:qml:qpie",
+  "method": "tectonic"
+ },
+ "fig-qml-shardq": {
+  "ext": "svg",
+  "hash": "f9a6596ebea84e5d",
+  "label": "fig:qml:shardq",
+  "method": "tectonic"
+ },
+ "fig-qml-vnqe": {
+  "ext": "svg",
+  "hash": "bb299341f02c5716",
+  "label": "fig:qml:vnqe",
+  "method": "tectonic"
+ },
+ "fig-qml-vqt-heads": {
+  "ext": "svg",
+  "hash": "56811e8e312a70c8",
+  "label": "fig:qml:vqt-heads",
+  "method": "tectonic"
+ },
+ "fig-qml-vqt-rmse": {
+  "ext": "svg",
+  "hash": "3d21e0d137c87dea",
+  "label": "fig:qml:vqt-rmse",
+  "method": "tectonic"
+ },
+ "fig-syn-cost": {
+  "ext": "svg",
+  "hash": "7138f96f4eaf2f53",
+  "label": "fig:syn:cost",
+  "method": "tectonic"
+ },
+ "fig-syn-loop": {
+  "ext": "svg",
+  "hash": "ea093b86078e51b2",
+  "label": "fig:syn:loop",
+  "method": "tectonic"
+ },
+ "fig-syn-parser": {
+  "ext": "svg",
+  "hash": "b32ef08cf675d720",
+  "label": "fig:syn:parser",
+  "method": "tectonic"
+ },
+ "fig-syn-routes": {
+  "ext": "svg",
+  "hash": "9147245c76f8dc05",
+  "label": "fig:syn:routes",
+  "method": "tectonic"
+ },
+ "fig-syn-splitstep": {
+  "ext": "svg",
+  "hash": "5ec9e27ba907738f",
+  "label": "fig:syn:splitstep",
+  "method": "tectonic"
+ },
+ "fig-syn-training": {
+  "ext": "svg",
+  "hash": "25410d6482507d24",
+  "label": "fig:syn:training",
+  "method": "tectonic"
+ }
+}

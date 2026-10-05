@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="$author$">
+<meta name="description" content="$title$ - $doctype$ by $author$, Texas Tech University, $month$ $year$">
+<title>$title$ - $author$</title>
+<link rel="stylesheet" href="style.css">
+<script>
+window.MathJax = {
+ "loader": {
+  "load": [
+   "[tex]/physics",
+   "[tex]/boldsymbol",
+   "[tex]/mathtools"
+  ]
+ },
+ "tex": {
+  "inlineMath": [
+   [
+    "\\(",
+    "\\)"
+   ],
+   [
+    "$$",
+    "$$"
+   ]
+  ],
+  "displayMath": [
+   [
+    "\\[",
+    "\\]"
+   ],
+   [
+    "$$$$",
+    "$$$$"
+   ]
+  ],
+  "processEscapes": true,
+  "processEnvironments": true,
+  "tags": "ams",
+  "tagSide": "right",
+  "packages": {
+   "[+]": [
+    "physics",
+    "boldsymbol",
+    "mathtools"
+   ]
+  },
+  "macros": {
+   "bm": [
+    "\\boldsymbol{#1}",
+    1
+   ],
+   "bigO": [
+    "\\mathcal{O}\\!\\left(#1\\right)",
+    1
+   ],
+   "eps": "\\varepsilon",
+   "Hcost": "\\text{H_C}",
+   "Hmix": "\\text{H_M}",
+   "code": [
+    "[[#1,#2,#3]]",
+    3
+   ],
+   "R": "\\mathbb{R}",
+   "C": "\\mathbb{C}",
+   "Z": "\\mathbb{Z}",
+   "poly": "\\operatorname{poly}",
+   "argmin": "\\operatorname*{arg\\,min}",
+   "argmax": "\\operatorname*{arg\\,max}",
+   "SI": [
+    "#1\\,\\mathrm{#2}",
+    2
+   ],
+   "num": [
+    "#1",
+    1
+   ],
+   "si": [
+    "\\mathrm{#1}",
+    1
+   ],
+   "qty": [
+    "#1\\,\\mathrm{#2}",
+    2
+   ],
+   "unit": [
+    "\\mathrm{#1}",
+    1
+   ],
+   "giga": "G",
+   "tera": "T",
+   "mega": "M",
+   "kilo": "k",
+   "micro": "\\mu",
+   "nano": "n",
+   "gibi": "Gi",
+   "byte": "B",
+   "second": "s",
+   "hour": "h",
+   "minute": "min",
+   "percent": "\\%",
+   "per": "/",
+   "textsc": [
+    "\\text{#1}",
+    1
+   ],
+   "textsuperscript": [
+    "^{\\text{#1}}",
+    1
+   ],
+   "lstick": [
+    "#1",
+    1
+   ],
+   "qgear": "\\text{Q-GEAR}",
+   "deal": "\\text{DEAL}",
+   "qawa": "\\text{QAWA}",
+   "qpie": "\\text{QPIE}",
+   "vqt": "\\text{VQT}",
+   "shardq": "\\text{ShardQ}",
+   "nnqa": "\\text{NNQA}",
+   "rubriq": "\\text{RubriQ}",
+   "cudaq": "\\text{CUDA-Q}",
+   "qiskit": "\\text{Qiskit}",
+   "qcrank": "\\text{QCrank}"
+  }
+ },
+ "options": {
+  "skipHtmlTags": [
+   "script",
+   "noscript",
+   "style",
+   "textarea",
+   "pre",
+   "code"
+  ],
+  "ignoreHtmlClass": "tex2jax_ignore"
+ },
+ "chtml": {
+  "displayAlign": "center",
+  "scale": 1.0
+ }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+<a id="top"></a>
+<header class="topbar">
+  <a class="brand" href="#top">$title$</a>
+  <nav class="topnav">
+    <a href="#TOC">Contents</a>
+    <a href="#list-of-figures">Figures</a>
+    <a href="#list-of-tables">Tables</a>
+    <a href="#references">References</a>
+  </nav>
+</header>
+<main>
+<section class="titlepage" id="title-page">
+  <p class="tp-title">$title$</p>
+  <p class="tp-by">by</p>
+  <p class="tp-author">$author$, $credentials$</p>
+  <p class="tp-type">$doctype$</p>
+  <p class="tp-in">In</p>
+  <p class="tp-dept">$department$</p>
+  <p class="tp-submit">Submitted to the Graduate Faculty<br>of Texas Tech University in<br>Partial Fulfillment of<br>the Requirements for<br>the Degree of</p>
+  <p class="tp-degree">$degree$</p>
+  <p class="tp-approved">Approved</p>
+  <p class="tp-member">$chair$<br><span class="tp-role">Chair of the Committee</span></p>
+$for(committee)$
+  <p class="tp-member">$committee$</p>
+$endfor$
+  <p class="tp-member">$dean$<br><span class="tp-role">Dean of the Graduate School</span></p>
+  <p class="tp-date">$month$, $year$</p>
+  <p class="tp-copyright">Copyright $year$, $author$</p>
+</section>
+$if(toc)$
+<nav id="TOC" role="doc-toc">
+<h1 class="unnumbered toc-title">Table of Contents</h1>
+$table-of-contents$
+</nav>
+$endif$
+<div id="lists-placeholder"></div>
+$body$
+</main>
+<footer class="pagefoot">
+  <p>$title$ &mdash; $author$, Texas Tech University, $month$ $year$. HTML edition generated from the LaTeX source by tools/build_html.py.</p>
+</footer>
+</body>
+</html>
